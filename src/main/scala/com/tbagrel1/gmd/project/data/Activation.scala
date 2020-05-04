@@ -8,7 +8,7 @@ object Activation {
   val HIGHER_SYMPTOM_TRANSMISSION_COEFF: Double = 0.90
 }
 
-case class DrugActivation(cureActivation: Double, cureOrigin: CureActivationOrigin, sideEffectActivation: Double, sideEffectOrigin: SideEffectActivationOrigin) {
+case class DrugActivation(var cureActivation: Double, var cureOrigin: CureActivationOrigin, var sideEffectActivation: Double, var sideEffectOrigin: SideEffectActivationOrigin) {
 }
 
 case class SymptomActivation(levelActivation: ArrayBuffer[Double], levelOrigin: ArrayBuffer[SymptomActivationOrigin]) {

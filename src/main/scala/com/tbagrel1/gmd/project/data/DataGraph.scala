@@ -1,7 +1,6 @@
 package com.tbagrel1.gmd.project.data
 
 import com.tbagrel1.gmd.project.data.sources.{Br08303, ChemicalSources, Drugbank, HpAnnotations, HpOntology, Meddra, Omim, OmimOntology, Orphadata}
-import com.tbagrel1.gmd.project.data.Activation
 
 import scala.collection.mutable
 
@@ -52,6 +51,97 @@ class DataGraph {
     getDrugAttributeMap(attribute).get(attribute.value)
   }
 
+  def dispatchCausedByAt(nextLevel: Int, attribute: SymptomAttribute): Unit = {
+    // TODO -- no queue needed, one pass
+  }
+
+  def dispatchIsSideEffectAt(attribute: SymptomAttribute): Unit = {
+    // TODO -- no queue needed, one pass
+  }
+
+  def dispatchCuredByAt(attribute: SymptomAttribute): Unit = {
+    // TODO -- no queue needed, one pass
+  }
+
+  def dispatchDrugEqSynonymAll(): Unit = {
+    while (drugAttributesQueue.nonEmpty) {
+      val attribute = drugAttributesQueue.dequeue()
+      dispatchDrugEqSynonymAt(attribute)
+    }
+  }
+
+  def dispatchSymptomEqSynonymAll(): Unit = {
+    while (symptomAttributesQueue.nonEmpty) {
+      val attribute = symptomAttributesQueue.dequeue()
+      dispatchSymptomEqSynonymAt(attribute)
+    }
+  }
+
+  def dispatchDrugEqSynonymAt(attribute: DrugAttribute): Unit = {
+    val (eqs, synonyms, activation) = attribute match {
+      case name@DrugName(_) => (
+        List((drugbank.drugNameEqDrugAtc(name), "Drugbank"),
+             (br08303.drugNameEqDrugAtc(name), "Br08303"))
+        ,
+        List((drugbank.drugNameSynonymDrugName(name), "Drugbank"))
+        ,
+        getDrugAttributeActivation(attribute).get
+      )
+      case atc@DrugAtc(_) => (
+        List((drugbank.drugAtcEqDrugName(atc), "Drugbank"),
+             (br08303.drugAtcEqDrugName(atc), "Br08303"),
+             (chemicalSources.drugAtcEqDrugCompound(atc), "ChemicalSources"))
+        ,
+        List((drugbank.drugAtcSynonymDrugName(atc), "Drugbank"))
+        ,
+        getDrugAttributeActivation(attribute).get
+      )
+      case compound@DrugCompound(_) => (
+        List((chemicalSources.drugCompoundEqDrugAtc(compound), "ChemicalSources"))
+        ,
+        List()
+        ,
+        getDrugAttributeActivation(attribute).get
+      )
+    }
+    for ((eqsSynonyms, transmissionCoeff, cureOriginApp, sideEffectOriginApp) <- List((eqs, Activation.EQUAL_TRANSMISSION_COEFF, CureActivationOrigin.Equals, SideEffectActivationOrigin.Equals), (synonyms, Activation.SYNONYM_TRANSMISSION_COEFF, CureActivationOrigin.IsSynonym, SideEffectActivationOrigin.IsSynonym))) {
+      for ((eqSynonymSet, source) <- eqsSynonyms) {
+        for (eqSynonymAttribute <- eqSynonymSet) {
+          getDrugAttributeActivation(eqSynonymAttribute) match {
+            case None => {
+              val map = getDrugAttributeMap(eqSynonymAttribute)
+              map.put(
+                eqSynonymAttribute.value, DrugActivation(
+                  activation.cureActivation * transmissionCoeff,
+                  cureOriginApp(attribute, source),
+                  activation.sideEffectActivation * transmissionCoeff,
+                  sideEffectOriginApp(attribute, source)
+                )
+              )
+              drugAttributesQueue.enqueue(eqSynonymAttribute)
+            }
+            case Some(eqActivation) => {
+              var updated = false
+              if (activation.cureActivation * transmissionCoeff > eqActivation.cureActivation) {
+                updated = true
+                eqActivation.cureActivation = activation.cureActivation * transmissionCoeff
+                eqActivation.cureOrigin = cureOriginApp(attribute, source)
+              }
+              if (activation.sideEffectActivation * transmissionCoeff > eqActivation.sideEffectActivation) {
+                updated = true
+                eqActivation.sideEffectActivation = activation.sideEffectActivation * transmissionCoeff
+                eqActivation.sideEffectOrigin = sideEffectOriginApp(attribute, source)
+              }
+              if (updated) {
+                drugAttributesQueue.enqueue(eqSynonymAttribute)
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
   def dispatchSymptomEqSynonymAt(attribute: SymptomAttribute): Unit = {
     val (eqs, synonyms, activation) = attribute match {
       case name@SymptomName(_) => (
@@ -99,7 +189,7 @@ class DataGraph {
         getSymptomAttributeActivation(attribute).get
       )
     }
-    for ((eqsSynonyms, transmissionCoeff) <- List((eqs, Activation.EQUAL_TRANSMISSION_COEFF), (synonyms, Activation.SYNONYM_TRANSMISSION_COEFF))) {
+    for ((eqsSynonyms, transmissionCoeff, originApp) <- List((eqs, Activation.EQUAL_TRANSMISSION_COEFF, SymptomActivationOrigin.Equals), (synonyms, Activation.SYNONYM_TRANSMISSION_COEFF, SymptomActivationOrigin.IsSynonym))) {
       for ((eqSynonymSet, source) <- eqsSynonyms) {
         for (eqSynonymAttribute <- eqSynonymSet) {
           getSymptomAttributeActivation(eqSynonymAttribute) match {
@@ -108,7 +198,7 @@ class DataGraph {
               map.put(
                 eqSynonymAttribute.value, SymptomActivation(
                   for (act <- activation.levelActivation) yield { act * transmissionCoeff },
-                  for (_ <- activation.levelActivation) yield { Equals(attribute, source) }
+                  for (_ <- activation.levelActivation) yield { originApp(attribute, source) }
                   )
                 )
               symptomAttributesQueue.enqueue(eqSynonymAttribute)
@@ -119,7 +209,7 @@ class DataGraph {
                 if (activation.levelActivation(i) * transmissionCoeff > eqActivation.levelActivation(i)) {
                   updated = true
                   eqActivation.levelActivation(i) = activation.levelActivation(i) * transmissionCoeff
-                  eqActivation.levelOrigin(i) = Equals(attribute, source)
+                  eqActivation.levelOrigin(i) = originApp(attribute, source)
                 }
               }
               if (updated) {
