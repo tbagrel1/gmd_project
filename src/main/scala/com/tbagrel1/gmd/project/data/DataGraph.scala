@@ -1,8 +1,11 @@
 package com.tbagrel1.gmd.project.data
 
+import com.tbagrel1.gmd.project.data.SideEffectActivationOrigin.ResponsibleFor
+import com.tbagrel1.gmd.project.data.SymptomActivationOrigin.{HigherLevel, NoOrigin}
 import com.tbagrel1.gmd.project.data.sources.{Br08303, ChemicalSources, Drugbank, HpAnnotations, HpOntology, Meddra, Omim, OmimOntology, Orphadata}
 
 import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 class DataGraph {
   val br08303: Br08303 = null
@@ -52,15 +55,163 @@ class DataGraph {
   }
 
   def dispatchCausedByAt(nextLevel: Int, attribute: SymptomAttribute): Unit = {
-    // TODO -- no queue needed, one pass
+    val (causes, activation) = attribute match {
+      case name@SymptomName(_) => (
+        List((omim.symptomNameCausedBySymptomName(name), "Omim"),
+             (orphadata.symptomNameCausedBySymptomName(name), "Orphadata"))
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case cui@SymptomCui(_) => (
+        List()
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case hp@SymptomHp(_) => (
+        List((hpAnnotations.symptomHpCausedBySymptomName(hp), "HpAnnotations"),
+             (hpAnnotations.symptomHpCausedBySymptomOmim(hp), "HpAnnotations"))
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case omim@SymptomOmim(_) => (
+        List()
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+    }
+    for ((causeSet, source) <- causes) {
+      for (causeAttribute <- causeSet) {
+        getSymptomAttributeActivation(causeAttribute) match {
+          case None => {
+            val map = getSymptomAttributeMap(causeAttribute)
+            map.put(
+              causeAttribute.value, SymptomActivation(
+                for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { activation.levelActivation(i - 1) * Activation.HIGHER_SYMPTOM_TRANSMISSION_COEFF } else { 0.0 } },
+                for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { HigherLevel(ArrayBuffer((attribute, source))) } else { SymptomActivationOrigin.NoOrigin } }
+                )
+              )
+          }
+          case Some(causeActivation) => {
+            causeActivation.levelOrigin(nextLevel) match {
+              case SymptomActivationOrigin.NoOrigin => {
+                causeActivation.levelOrigin(nextLevel) = HigherLevel(ArrayBuffer((attribute, source)))
+                causeActivation.levelActivation(nextLevel) = activation.levelActivation(nextLevel - 1) * Activation.HIGHER_SYMPTOM_TRANSMISSION_COEFF
+              }
+              case SymptomActivationOrigin.HigherLevel(attributesSources) => {
+                attributesSources.addOne((attribute, source))
+                causeActivation.levelActivation(nextLevel) += activation.levelActivation(nextLevel - 1) * Activation.HIGHER_SYMPTOM_TRANSMISSION_COEFF
+              }
+              case _ => throw new Exception("Higher level symptom has an activation origin different from NoOrigin or HigherLevel")
+            }
+          }
+        }
+      }
+    }
   }
 
   def dispatchIsSideEffectAt(attribute: SymptomAttribute): Unit = {
-    // TODO -- no queue needed, one pass
+    val (causes, activation) = attribute match {
+      case name@SymptomName(_) => (
+        List((drugbank.symptomNameIsSideEffectDrugName(name), "Drugbank"),
+             (drugbank.symptomNameIsSideEffectDrugAtc(name), "Drugbank"),
+             (meddra.symptomNameIsSideEffectDrugCompound(name), "Meddra"))
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case cui@SymptomCui(_) => (
+        List((meddra.symptomCuiIsSideEffectDrugCompound(cui), "Meddra"))
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case hp@SymptomHp(_) => (
+        List()
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case omim@SymptomOmim(_) => (
+        List()
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+    }
+    for ((causeSet, source) <- causes) {
+      for (causeAttribute <- causeSet) {
+        getDrugAttributeActivation(causeAttribute) match {
+          case None => {
+            val map = getDrugAttributeMap(causeAttribute)
+            map.put(
+              causeAttribute.value, DrugActivation(0.0, CureActivationOrigin.NoOrigin, activation.levelActivation.max, ResponsibleFor(ArrayBuffer((attribute, source))))
+              )
+          }
+          case Some(causeActivation) => {
+
+            causeActivation.sideEffectOrigin match {
+              case SideEffectActivationOrigin.NoOrigin => {
+                causeActivation.sideEffectOrigin = SideEffectActivationOrigin.ResponsibleFor(ArrayBuffer((attribute, source)))
+                causeActivation.sideEffectActivation = activation.levelActivation.max
+              }
+              case SideEffectActivationOrigin.ResponsibleFor(attributesSources) => {
+                attributesSources.addOne((attribute, source))
+                causeActivation.sideEffectActivation += activation.levelActivation.max
+              }
+              case _ => throw new Exception("Side effect drug has a side effect activation origin different from NoOrigin or ResponsibleFor")
+            }
+          }
+        }
+      }
+    }
   }
 
   def dispatchCuredByAt(attribute: SymptomAttribute): Unit = {
-    // TODO -- no queue needed, one pass
+    val (cures, activation) = attribute match {
+      case name@SymptomName(_) => (
+        List((drugbank.symptomNameCuredByDrugName(name), "Drugbank"),
+             (drugbank.symptomNameCuredByDrugAtc(name), "Drugbank"),
+             (meddra.symptomNameCuredByDrugCompound(name), "Meddra"))
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case cui@SymptomCui(_) => (
+        List((meddra.symptomCuiCuredByDrugCompound(cui), "Meddra"))
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case hp@SymptomHp(_) => (
+        List()
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+      case omim@SymptomOmim(_) => (
+        List()
+        ,
+        getSymptomAttributeActivation(attribute).get
+      )
+    }
+    for ((cureSet, source) <- cures) {
+      for (cureAttribute <- cureSet) {
+        getDrugAttributeActivation(cureAttribute) match {
+          case None => {
+            val map = getDrugAttributeMap(cureAttribute)
+            map.put(
+              cureAttribute.value, DrugActivation(activation.levelActivation.max, CureActivationOrigin.Cures(ArrayBuffer((attribute, source))), 0.0, SideEffectActivationOrigin.NoOrigin)
+              )
+          }
+          case Some(cureActivation) => {
+            cureActivation.cureOrigin match {
+              case CureActivationOrigin.NoOrigin => {
+                cureActivation.cureOrigin = CureActivationOrigin.Cures(ArrayBuffer((attribute, source)))
+                cureActivation.cureActivation = activation.levelActivation.max
+              }
+              case CureActivationOrigin.Cures(attributesSources) => {
+                attributesSources.addOne((attribute, source))
+                cureActivation.cureActivation += activation.levelActivation.max
+              }
+              case _ => throw new Exception("Cure drug has a cure activation origin different from NoOrigin or Cures")
+            }
+          }
+        }
+      }
+    }
   }
 
   def dispatchDrugEqSynonymAll(): Unit = {

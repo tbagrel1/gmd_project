@@ -19,22 +19,21 @@ class Meddra {
   def symptomNameIsSideEffectDrugCompound(symptomName: SymptomName): Set[DrugCompound] = { Set.empty }
   def symptomCuiIsSideEffectDrugCompound(symptomCui: SymptomCui): Set[DrugCompound] = { Set.empty }
 
-  val driver = "com.mysql.jdbc.Driver"
-  val databaseURL = "jdbc:mysql://neptune.telecomnancy.univ-lorraine.fr"
+  val databaseURL = "jdbc:mysql://neptune.telecomnancy.univ-lorraine.fr/"
   val database = "gmd"
   val username = "gmd-read"
   val password = "esial"
   var connection: Connection = _
-  val query: String = "SELECT TABLE_NAME " +
-    "FROM information_schema.TABLES "
+  val query: String = "SELECT COLUMN_NAME " +
+    "FROM information_schema.COLUMNS "
   var x = ""
   try {
-    Class.forName(driver).newInstance()
-    connection = DriverManager.getConnection(databaseURL+database, username, password)
+    Class.forName("com.mysql.jdbc.Driver")
+    connection = DriverManager.getConnection(databaseURL + database, username, password)
     val statement = connection.createStatement()
     val results = statement.executeQuery(query)
     while(results.next()) {
-      x = results.getString("table_name")
+      x = results.getString("column_name")
       println("%s".format(x))
     }
   } catch {

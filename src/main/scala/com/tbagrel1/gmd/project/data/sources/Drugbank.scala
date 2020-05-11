@@ -11,4 +11,6 @@ class Drugbank {
   def symptomNameCuredByDrugAtc(symptomName: SymptomName): Set[DrugAtc] = { Set.empty }
   def symptomNameIsSideEffectDrugName(symptomName: SymptomName): Set[DrugName] = { Set.empty }
   def symptomNameIsSideEffectDrugAtc(symptomName: SymptomName): Set[DrugName] = { Set.empty }
+
+
 }
