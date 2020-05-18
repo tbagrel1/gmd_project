@@ -1,4 +1,4 @@
-package com.tbagrel1.gmd.project.data.sources
+package com.tbagrel1.gmd.project.sources
 
 class SourceCatalog() {
   val br08303: Br08303 = new Br08303

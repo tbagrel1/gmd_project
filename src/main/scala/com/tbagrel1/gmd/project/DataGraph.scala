@@ -1,7 +1,7 @@
-package com.tbagrel1.gmd.project.data
+package com.tbagrel1.gmd.project
 
-import com.tbagrel1.gmd.project.data.SymptomActivationOrigin.HigherLevel
-import com.tbagrel1.gmd.project.data.sources.SourceCatalog
+import SymptomActivationOrigin.HigherLevel
+import com.tbagrel1.gmd.project.sources.SourceCatalog
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer

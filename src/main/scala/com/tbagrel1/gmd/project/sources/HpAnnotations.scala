@@ -1,8 +1,10 @@
-package com.tbagrel1.gmd.project.data.sources
+package com.tbagrel1.gmd.project.sources
 
 import java.sql.{Connection, DriverManager}
 
-import com.tbagrel1.gmd.project.data.{SymptomHp, SymptomName, SymptomOmim}
+import com.tbagrel1.gmd.project.{SymptomHp, SymptomName, SymptomOmim}
+
+import scala.collection.mutable
 
 object HpAnnotations {
   // TODO: remove -- test code only
@@ -12,10 +14,10 @@ object HpAnnotations {
 }
 
 class HpAnnotations {
-  def symptomNameEqSymptomOmim(symptomName: SymptomName): Set[SymptomOmim] = { Set.empty }
-  def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): Set[SymptomName] = { Set.empty }
-  def symptomHpCausedBySymptomName(symptomHp: SymptomHp): Set[SymptomName] = { Set.empty }
-  def symptomHpCausedBySymptomOmim(symptomHp: SymptomHp): Set[SymptomOmim] = { Set.empty }
+  def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = { mutable.Set.empty }
+  def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = { mutable.Set.empty }
+  def symptomHpCausedBySymptomName(symptomHp: SymptomHp): mutable.Set[SymptomName] = { mutable.Set.empty }
+  def symptomHpCausedBySymptomOmim(symptomHp: SymptomHp): mutable.Set[SymptomOmim] = { mutable.Set.empty }
 
   val databasePath = "jdbc:sqlite:/home/tim/floobits/share/tbagrel1/gmd_project/data_sources/"
   val database = "hpo_annotations.sqlite"

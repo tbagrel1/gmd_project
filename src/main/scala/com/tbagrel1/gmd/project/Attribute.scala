@@ -1,4 +1,4 @@
-package com.tbagrel1.gmd.project.data
+package com.tbagrel1.gmd.project
 
 sealed trait Attribute {
   def value: String

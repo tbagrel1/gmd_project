@@ -1,4 +1,4 @@
-package com.tbagrel1.gmd.project.data
+package com.tbagrel1.gmd.project
 
 import scala.collection.mutable.ArrayBuffer
 
