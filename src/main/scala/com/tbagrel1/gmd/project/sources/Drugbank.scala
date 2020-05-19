@@ -1,6 +1,7 @@
 package com.tbagrel1.gmd.project.sources
 
-import java.nio.file.Paths
+import java.io.File
+import java.nio.file.{Files, Paths}
 
 import com.outr.lucene4s.{DirectLucene, exact}
 import com.outr.lucene4s.field.{Field, FieldType}
@@ -23,7 +24,7 @@ case class DrugbankEqDrugNameDrugAtcRecord(id: Int, drugName: String, drugAtc: S
 case class DrugbankSynonymDrugNameDrugNameRecord(id: Int, drugName1: String, drugName2: String)
 case class DrugbankCureSideEffectDrugNameRecord(id: Int, drugName: String, cures: String, sideEffects: String)
 
-object DrugbankLucene extends DirectLucene(uniqueFields = List("id"), Option(Paths.get("indexes/drugbank"))) {
+object DrugbankLucene extends DirectLucene(uniqueFields = List("eqDrugNameDrugAtcRecordId", "synonymDrugNameDrugNameRecordId", "cureSideEffectDrugNameRecordId"), Option(Paths.get("indexes/drugbank"))) {
   val eqDrugNameDrugAtcRecords: SearchableDrugbankEqDrugNameDrugAtcRecord = create.searchable[SearchableDrugbankEqDrugNameDrugAtcRecord]
   val synonymDrugNameDrugNameRecords: SearchableDrugbankSynonymDrugNameDrugNameRecord = create.searchable[SearchableDrugbankSynonymDrugNameDrugNameRecord]
   val cureSideEffectDrugNameRecords: SearchableDrugbankCureSideEffectDrugNameRecord = create.searchable[SearchableDrugbankCureSideEffectDrugNameRecord]
@@ -32,7 +33,7 @@ object DrugbankLucene extends DirectLucene(uniqueFields = List("id"), Option(Pat
 trait SearchableDrugbankEqDrugNameDrugAtcRecord extends Searchable[DrugbankEqDrugNameDrugAtcRecord] {
   override def idSearchTerms(eqDrugNameDrugAtcRecord: DrugbankEqDrugNameDrugAtcRecord): List[SearchTerm] = List(exact(id(eqDrugNameDrugAtcRecord.id)))
 
-  def id: Field[Int] = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
+  val id: Field[Int] = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
   val drugName: Field[String] = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordDrugName", FieldType.Stored, false) // "in" matching
   val drugAtc: Field[String]  = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordDrugAtc", FieldType.Untokenized, false) // exact matching
 }
@@ -40,7 +41,7 @@ trait SearchableDrugbankEqDrugNameDrugAtcRecord extends Searchable[DrugbankEqDru
 trait SearchableDrugbankSynonymDrugNameDrugNameRecord extends Searchable[DrugbankSynonymDrugNameDrugNameRecord] {
   override def idSearchTerms(synonymDrugNameDrugNameRecord: DrugbankSynonymDrugNameDrugNameRecord): List[SearchTerm] = List(exact(id(synonymDrugNameDrugNameRecord.id)))
 
-  def id: Field[Int] = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordId", FieldType.Numeric)
+  val id: Field[Int] = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordId", FieldType.Numeric)
   val drugName1: Field[String] = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordDrugName1", FieldType.Stored, false) // "in" matching
   val drugName2: Field[String]  = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordDrugName2", FieldType.Stored, false) // "in" matching
 }
@@ -48,10 +49,18 @@ trait SearchableDrugbankSynonymDrugNameDrugNameRecord extends Searchable[Drugban
 trait SearchableDrugbankCureSideEffectDrugNameRecord extends Searchable[DrugbankCureSideEffectDrugNameRecord] {
   override def idSearchTerms(cureSideEffectDrugNameRecord: DrugbankCureSideEffectDrugNameRecord): List[SearchTerm] = List(exact(id(cureSideEffectDrugNameRecord.id)))
 
-  def id: Field[Int] = DrugbankLucene.create.field("cureSideEffectDrugNameRecordId", FieldType.Numeric)
+  val id: Field[Int] = DrugbankLucene.create.field("cureSideEffectDrugNameRecordId", FieldType.Numeric)
   val drugName: Field[String] = DrugbankLucene.create.field("cureSideEffectDrugNameRecordDrugName", FieldType.Stored, false) // "in" matching
   val cures: Field[String]  = DrugbankLucene.create.field("cureSideEffectDrugNameRecordCures", FieldType.Stored, false) // "in" matching
   val sideEffects: Field[String]  = DrugbankLucene.create.field("cureSideEffectDrugNameRecordSideEffects", FieldType.Stored, false) // "in" matching
+}
+
+object Drugbank {
+  def main(args: Array[String]): Unit = {
+    val drugbank = new Drugbank
+    drugbank.createIndex(true)
+    println(drugbank.symptomNameCuredByDrugName(SymptomName(Utils.normalize("metastatic colorectal carcinoma"))))
+  }
 }
 
 class Drugbank {
@@ -79,7 +88,7 @@ class Drugbank {
     var eqId = 0
     var synonymId = 0
     var cureSideEffectId = 0
-    val bufferedFile = Source.fromFile("data_sources/drugbank.xml")
+    val file = new File("data_sources/drugbank.xml")
       drugTransformer.parseForeach(xmlDrug => {
         val cureSideEffectRecord = DrugbankCureSideEffectDrugNameRecord(cureSideEffectId, Utils.normalize(xmlDrug.name), Utils.normalize(xmlDrug.cures), Utils.normalize(xmlDrug.sideEffects))
         if (verbose) {
@@ -103,13 +112,56 @@ class Drugbank {
           synonymDrugNameDrugNameRecords.insert(synonymRecord).index()
           synonymId += 1
         }
-      }) parse bufferedFile
-    bufferedFile.close()
+      }) parse file
   }
 
-  def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = { mutable.Set.empty }
-  def drugAtcEqDrugName(drugAtc: DrugAtc): mutable.Set[DrugName] = { mutable.Set.empty }
-  def drugNameSynonymDrugName(drugName: DrugName): mutable.Set[DrugName] = { mutable.Set.empty }
-  def symptomNameCuredByDrugName(symptomName: SymptomName): mutable.Set[DrugName] = { mutable.Set.empty }
-  def symptomNameIsSideEffectDrugName(symptomName: SymptomName): mutable.Set[DrugName] = { mutable.Set.empty }
+  def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
+    mutable.Set.from(
+      eqDrugNameDrugAtcRecords.query()
+        .filter(exact(eqDrugNameDrugAtcRecords.drugName(drugName.value)))
+        .search()
+        .entries
+        .map(eqDrugNameDrugAtcRecord => DrugAtc(eqDrugNameDrugAtcRecord.drugAtc)))
+  }
+  def drugAtcEqDrugName(drugAtc: DrugAtc): mutable.Set[DrugName] = {
+    mutable.Set.from(
+      eqDrugNameDrugAtcRecords.query()
+        .filter(exact(eqDrugNameDrugAtcRecords.drugAtc(drugAtc.value)))
+        .search()
+        .entries
+        .map(eqDrugNameDrugAtcRecord => DrugName(eqDrugNameDrugAtcRecord.drugName)))
+  }
+  def drugNameSynonymDrugName(drugName: DrugName): mutable.Set[DrugName] = {
+    mutable.Set.from(
+      synonymDrugNameDrugNameRecords.query()
+        .filter(exact(synonymDrugNameDrugNameRecords.drugName1(drugName.value)))
+        .search()
+        .entries
+        .map(synonymDrugNameDrugNameRecord => DrugName(synonymDrugNameDrugNameRecord.drugName2))
+    ) union mutable.Set.from(
+      synonymDrugNameDrugNameRecords.query()
+        .filter(exact(synonymDrugNameDrugNameRecords.drugName2(drugName.value)))
+        .search()
+        .entries
+        .map(synonymDrugNameDrugNameRecord => DrugName(synonymDrugNameDrugNameRecord.drugName1))
+    )
+  }
+  def symptomNameCuredByDrugName(symptomName: SymptomName): mutable.Set[DrugName] = {
+    mutable.Set.from(
+      cureSideEffectDrugNameRecords.query()
+        .filter(exact(cureSideEffectDrugNameRecords.cures(symptomName.value)))
+        .search()
+        .entries
+        .map(cureSideEffectDrugNameRecord => DrugName(cureSideEffectDrugNameRecord.drugName))
+    )
+  }
+  def symptomNameIsSideEffectDrugName(symptomName: SymptomName): mutable.Set[DrugName] = {
+    mutable.Set.from(
+      cureSideEffectDrugNameRecords.query()
+        .filter(exact(cureSideEffectDrugNameRecords.sideEffects(symptomName.value)))
+        .search()
+        .entries
+        .map(cureSideEffectDrugNameRecord => DrugName(cureSideEffectDrugNameRecord.drugName))
+      )
+  }
 }

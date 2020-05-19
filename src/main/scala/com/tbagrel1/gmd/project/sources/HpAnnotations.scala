@@ -2,7 +2,7 @@ package com.tbagrel1.gmd.project.sources
 
 import java.sql.{Connection, DriverManager}
 
-import com.tbagrel1.gmd.project.{Attribute, SymptomHp, SymptomName, SymptomOmim, Utils}
+import com.tbagrel1.gmd.project.{Attribute, SymptomCui, SymptomHp, SymptomName, SymptomOmim, Utils}
 
 import scala.collection.mutable
 
@@ -48,10 +48,27 @@ class HpAnnotations {
 
     resultSet
   }
-  def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = { mutable.Set.empty }
+
+  def genericQueryOmim[A <: Attribute, B <: Attribute](inputColumnName: String, inputColumnValue: A, outputColumnName: String, tableName: String, wrapper: String => B): mutable.Set[B] = {
+    val query = s"SELECT DISTINCT ${outputColumnName} FROM ${tableName} WHERE UPPER(${inputColumnName}) = ? AND UPPER(${outputColumnName}) LIKE 'OMIM'"
+    val statement = connection.prepareStatement(query)
+    statement.setString(1, inputColumnValue.value)
+
+    val results = statement.executeQuery()
+    val resultSet = mutable.HashSet.empty[B]
+    while (results.next()) {
+      val resultString = results.getString(outputColumnName)
+      resultSet.addOne(wrapper(Utils.normalize(resultString)))
+    }
+
+    resultSet
+  }
+
+  def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
+    genericQuery("disease_label", symptomName, "sign_id", "meddra", SymptomOmim.apply)
+  }
 
   def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = { mutable.Set.empty }
   def symptomHpCausedBySymptomName(symptomHp: SymptomHp): mutable.Set[SymptomName] = { mutable.Set.empty }
-  deasease_label sign_id
   def symptomHpCausedBySymptomOmim(symptomHp: SymptomHp): mutable.Set[SymptomOmim] = { mutable.Set.empty }
 }

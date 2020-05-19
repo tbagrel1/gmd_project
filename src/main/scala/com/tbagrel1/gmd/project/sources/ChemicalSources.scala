@@ -14,14 +14,14 @@ import scala.collection.mutable
 
 case class ChemicalSourcesEqDrugAtcDrugCompoundRecord(id: Int, drugAtc: String, drugCompound: String)
 
-object ChemicalSourcesLucene extends DirectLucene(uniqueFields = List("id"), Option(Paths.get("indexes/chemical_sources"))) {
+object ChemicalSourcesLucene extends DirectLucene(uniqueFields = List("eqDrugAtcDrugCompoundRecordId"), Option(Paths.get("indexes/chemical_sources"))) {
   val eqDrugAtcDrugCompoundRecords: SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord = create.searchable[SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord]
 }
 
 trait SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord extends Searchable[ChemicalSourcesEqDrugAtcDrugCompoundRecord] {
   override def idSearchTerms(eqDrugAtcDrugCompoundRecord: ChemicalSourcesEqDrugAtcDrugCompoundRecord): List[SearchTerm] = List(exact(id(eqDrugAtcDrugCompoundRecord.id)))
 
-  def id: Field[Int] = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordId", FieldType.Numeric)
+  val id: Field[Int] = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordId", FieldType.Numeric)
   val drugAtc: Field[String] = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordDrugAtc", FieldType.Untokenized, false) // exact matching
   val drugCompound: Field[String]  = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordDrugCompound", FieldType.Untokenized, false) // exact matching
 }

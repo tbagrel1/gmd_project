@@ -14,14 +14,14 @@ import scala.io.Source
 
 case class Br08303EqDrugNameDrugAtcRecord(id: Int, drugName: String, drugAtc: String)
 
-object Br08303Lucene extends DirectLucene(uniqueFields = List("id"), Option(Paths.get("indexes/br08303"))) {
+object Br08303Lucene extends DirectLucene(uniqueFields = List("eqDrugNameDrugAtcRecordId"), Option(Paths.get("indexes/br08303"))) {
   val eqDrugNameDrugAtcRecord: SearchableBr08303EqDrugNameDrugAtcRecord = create.searchable[SearchableBr08303EqDrugNameDrugAtcRecord]
 }
 
 trait SearchableBr08303EqDrugNameDrugAtcRecord extends Searchable[Br08303EqDrugNameDrugAtcRecord] {
   override def idSearchTerms(eqDrugNameDrugAtcRecord: Br08303EqDrugNameDrugAtcRecord): List[SearchTerm] = List(exact(id(eqDrugNameDrugAtcRecord.id)))
 
-  def id: Field[Int] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
+  val id: Field[Int] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
   val drugName: Field[String] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugName", FieldType.Stored, false) // "in" matching
   val drugAtc: Field[String]  = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugAtc", FieldType.Untokenized, false) // exact matching
 }
