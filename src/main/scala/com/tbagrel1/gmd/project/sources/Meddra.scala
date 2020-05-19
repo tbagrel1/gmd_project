@@ -10,8 +10,12 @@ object Meddra {
   // TODO: remove -- test code only
   def main(args: Array[String]): Unit = {
     val meddra = new Meddra
-    println(meddra.symptomCuiEqSymptomName(SymptomCui("C0015544")))
+    println(meddra.symptomCuiEqSymptomName(SymptomCui("C0000729")))
     println(meddra.symptomNameEqSymptomCui(SymptomName("MASS IN ABDOMEN")))
+    println(meddra.symptomNameCuredByDrugCompound(SymptomName("ABDOMINAL PAIN")))
+    println(meddra.symptomCuiCuredByDrugCompound(SymptomCui("C0000729")))
+    println(meddra.symptomNameIsSideEffectDrugCompound(SymptomName("ABDOMINAL PAIN")))
+    println(meddra.symptomCuiIsSideEffectDrugCompound(SymptomCui("C0000729")))
   }
 }
 
@@ -52,8 +56,31 @@ class Meddra {
     val resultSet3 = genericQuery("cui_of_meddra_term ", symptomCui, "concept_name", "meddra_all_indications", SymptomName.apply)
     resultSet1 union resultSet2 union resultSet3
   }
-  def symptomNameCuredByDrugCompound(symptomName: SymptomName): mutable.Set[DrugCompound] = { mutable.Set.empty }
-  def symptomCuiCuredByDrugCompound(symptomCui: SymptomCui): mutable.Set[DrugCompound] = { mutable.Set.empty }
-  def symptomNameIsSideEffectDrugCompound(symptomName: SymptomName): mutable.Set[DrugCompound] = { mutable.Set.empty }
-  def symptomCuiIsSideEffectDrugCompound(symptomCui: SymptomCui): mutable.Set[DrugCompound] = { mutable.Set.empty }
+  def symptomNameCuredByDrugCompound(symptomName: SymptomName): mutable.Set[DrugCompound] = {
+    val resultSet1 = genericQuery("meddra_concept_name", symptomName, "stitch_compound_id", "meddra_all_indications", DrugCompound.apply)
+    resultSet1
+  }
+  def symptomCuiCuredByDrugCompound(symptomCui: SymptomCui): mutable.Set[DrugCompound] = {
+    val resultSet1 = genericQuery("cui", symptomCui, "stitch_compound_id", "meddra_all_indications", DrugCompound.apply)
+    val resultSet2 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id", "meddra_all_indications", DrugCompound.apply)
+    resultSet1 union resultSet2
+  }
+  def symptomNameIsSideEffectDrugCompound(symptomName: SymptomName): mutable.Set[DrugCompound] = {
+    val resultSet1 = genericQuery("side_effect_name", symptomName, "stitch_compound_id1", "meddra_all_se", DrugCompound.apply)
+    val resultSet2 = genericQuery("side_effect_name", symptomName, "stitch_compound_id2", "meddra_all_se", DrugCompound.apply)
+    val resultSet3 = genericQuery("side_effect_name", symptomName, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
+    val resultSet4 = genericQuery("side_effect_name", symptomName, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
+    resultSet1 union resultSet2 union resultSet3 union resultSet4
+  }
+  def symptomCuiIsSideEffectDrugCompound(symptomCui: SymptomCui): mutable.Set[DrugCompound] = {
+    val resultSet1 = genericQuery("cui", symptomCui, "stitch_compound_id1", "meddra_all_se", DrugCompound.apply)
+    val resultSet2 = genericQuery("cui", symptomCui, "stitch_compound_id2", "meddra_all_se", DrugCompound.apply)
+    val resultSet3 = genericQuery("cui", symptomCui, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
+    val resultSet4 = genericQuery("cui", symptomCui, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
+    val resultSet5 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id1", "meddra_all_se", DrugCompound.apply)
+    val resultSet6 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id2", "meddra_all_se", DrugCompound.apply)
+    val resultSet7 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
+    val resultSet8 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
+    resultSet1 union resultSet2 union resultSet3 union resultSet4 union resultSet5 union resultSet6 union resultSet7 union resultSet8 }
+
 }

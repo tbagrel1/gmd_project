@@ -8,22 +8,22 @@ import com.outr.lucene4s.{DirectLucene, exact}
 import com.outr.lucene4s.field.{Field, FieldType}
 import com.outr.lucene4s.mapper.Searchable
 import com.outr.lucene4s.query.SearchTerm
-import com.tbagrel1.gmd.project.{DrugAtc, DrugCompound, DrugName, Utils}
+import com.tbagrel1.gmd.project.{DrugAtc, DrugCompound, Utils}
 
 import scala.collection.mutable
 
-case class AtcCompoundRecord(id: Int, atc: String, compound: String)
+case class ChemicalSourcesEqDrugAtcDrugCompoundRecord(id: Int, drugAtc: String, drugCompound: String)
 
 object ChemicalSourcesLucene extends DirectLucene(uniqueFields = List("id"), Option(Paths.get("indexes/chemical_sources"))) {
-  val atcCompoundRecords: SearchableAtcCompoundRecord = create.searchable[SearchableAtcCompoundRecord]
+  val eqDrugAtcDrugCompoundRecords: SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord = create.searchable[SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord]
 }
 
-trait SearchableAtcCompoundRecord extends Searchable[AtcCompoundRecord] {
-  override def idSearchTerms(atcCompoundRecord: AtcCompoundRecord): List[SearchTerm] = List(exact(id(atcCompoundRecord.id)))
+trait SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord extends Searchable[ChemicalSourcesEqDrugAtcDrugCompoundRecord] {
+  override def idSearchTerms(eqDrugAtcDrugCompoundRecord: ChemicalSourcesEqDrugAtcDrugCompoundRecord): List[SearchTerm] = List(exact(id(eqDrugAtcDrugCompoundRecord.id)))
 
-  def id: Field[Int]
-  val atc: Field[String] = Br08303Lucene.create.field("atc", FieldType.Untokenized, false) // exact matching
-  val compound: Field[String]  = Br08303Lucene.create.field("compound", FieldType.Untokenized, false) // exact matching
+  def id: Field[Int] = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordId", FieldType.Numeric)
+  val drugAtc: Field[String] = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordDrugAtc", FieldType.Untokenized, false) // exact matching
+  val drugCompound: Field[String]  = ChemicalSourcesLucene.create.field("eqDrugAtcDrugCompoundRecordDrugCompound", FieldType.Untokenized, false) // exact matching
 }
 
 object ChemicalSources {
@@ -49,19 +49,19 @@ class ChemicalSources {
       val compound2 = Utils.normalize(fields(1).map(c => if (c == 's' || c == 'm') { '1' } else { c }))
       val atc = Utils.normalize(fields(3))
 
-      val record1 = AtcCompoundRecord(id, atc, compound1)
+      val record1 = ChemicalSourcesEqDrugAtcDrugCompoundRecord(id, atc, compound1)
       if (verbose) {
         println(record1)
       }
-      atcCompoundRecords.insert(record1).index()
+      eqDrugAtcDrugCompoundRecords.insert(record1).index()
       id += 1
 
       if (compound1 != compound2) {
-        val record2 = AtcCompoundRecord(id, atc, compound2)
+        val record2 = ChemicalSourcesEqDrugAtcDrugCompoundRecord(id, atc, compound2)
         if (verbose) {
           println(record2)
         }
-        atcCompoundRecords.insert(record2).index()
+        eqDrugAtcDrugCompoundRecords.insert(record2).index()
         id += 1
       }
     }
@@ -70,18 +70,18 @@ class ChemicalSources {
 
   def drugAtcEqDrugCompound(drugAtc: DrugAtc): mutable.Set[DrugCompound] = {
     mutable.Set.from(
-      atcCompoundRecords.query()
-        .filter(exact(atcCompoundRecords.atc(drugAtc.value)))
+      eqDrugAtcDrugCompoundRecords.query()
+        .filter(exact(eqDrugAtcDrugCompoundRecords.drugAtc(drugAtc.value)))
         .search()
         .entries
-        .map(atcCompoundRecord => DrugCompound(atcCompoundRecord.compound)))
+        .map(atcCompoundRecord => DrugCompound(atcCompoundRecord.drugCompound)))
   }
   def drugCompoundEqDrugAtc(drugCompound: DrugCompound): mutable.Set[DrugAtc] = {
     mutable.Set.from(
-      atcCompoundRecords.query()
-        .filter(exact(atcCompoundRecords.compound(drugCompound.value)))
+      eqDrugAtcDrugCompoundRecords.query()
+        .filter(exact(eqDrugAtcDrugCompoundRecords.drugCompound(drugCompound.value)))
         .search()
         .entries
-        .map(atcCompoundRecord => DrugAtc(atcCompoundRecord.atc)))
+        .map(atcCompoundRecord => DrugAtc(atcCompoundRecord.drugAtc)))
   }
 }

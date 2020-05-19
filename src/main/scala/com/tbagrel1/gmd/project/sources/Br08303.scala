@@ -12,18 +12,18 @@ import com.tbagrel1.gmd.project.{DrugAtc, DrugName, Utils}
 import scala.collection.mutable
 import scala.io.Source
 
-case class NameAtcRecord(id: Int, name: String, atc: String)
+case class Br08303EqDrugNameDrugAtcRecord(id: Int, drugName: String, drugAtc: String)
 
 object Br08303Lucene extends DirectLucene(uniqueFields = List("id"), Option(Paths.get("indexes/br08303"))) {
-  val nameAtcRecords: SearchableNameAtcRecord = create.searchable[SearchableNameAtcRecord]
+  val eqDrugNameDrugAtcRecord: SearchableBr08303EqDrugNameDrugAtcRecord = create.searchable[SearchableBr08303EqDrugNameDrugAtcRecord]
 }
 
-trait SearchableNameAtcRecord extends Searchable[NameAtcRecord] {
-  override def idSearchTerms(nameAtcRecord: NameAtcRecord): List[SearchTerm] = List(exact(id(nameAtcRecord.id)))
+trait SearchableBr08303EqDrugNameDrugAtcRecord extends Searchable[Br08303EqDrugNameDrugAtcRecord] {
+  override def idSearchTerms(eqDrugNameDrugAtcRecord: Br08303EqDrugNameDrugAtcRecord): List[SearchTerm] = List(exact(id(eqDrugNameDrugAtcRecord.id)))
 
-  def id: Field[Int]
-  val name: Field[String] = Br08303Lucene.create.field("name", FieldType.Stored, false) // "in" matching
-  val atc: Field[String]  = Br08303Lucene.create.field("atc", FieldType.Untokenized, false) // exact matching
+  def id: Field[Int] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
+  val drugName: Field[String] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugName", FieldType.Stored, false) // "in" matching
+  val drugAtc: Field[String]  = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugAtc", FieldType.Untokenized, false) // exact matching
 }
 
 object Br08303 {
@@ -49,44 +49,44 @@ class Br08303 {
       if (isContentLine(line)) {
         val interestingPart = line.slice(1, line.length).trim
         val parts = interestingPart.split(" ", 2)
-        val atc = Utils.normalize(parts(0).trim)
-        var name = parts(1).trim
-        var parenthesisIndex = name.indexOf(" (")
+        val drugAtc = Utils.normalize(parts(0).trim)
+        var drugName = parts(1).trim
+        var parenthesisIndex = drugName.indexOf(" (")
         if (parenthesisIndex == -1) {
-          parenthesisIndex = name.length
+          parenthesisIndex = drugName.length
         }
-        var bracketIndex = name.indexOf(" [")
+        var bracketIndex = drugName.indexOf(" [")
         if (bracketIndex == -1) {
-          bracketIndex = name.length
+          bracketIndex = drugName.length
         }
-        name = Utils.normalize(name.slice(0, parenthesisIndex min bracketIndex))
-        val record = NameAtcRecord(id, name, atc)
+        drugName = Utils.normalize(drugName.slice(0, parenthesisIndex min bracketIndex))
+        val record = Br08303EqDrugNameDrugAtcRecord(id, drugName, drugAtc)
         if (verbose) {
           println(record)
         }
-        nameAtcRecords.insert(record).index()
+        eqDrugNameDrugAtcRecord.insert(record).index()
         id += 1
       }
     }
     bufferedFile.close()
-    println(s"${id} Br08303Records inserted!")
+    println(s"${id} Br08303EqDrugNameDrugAtcRecords inserted!")
   }
 
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
     mutable.Set.from(
-      nameAtcRecords.query()
-        .filter(exact(nameAtcRecords.name(drugName.value)))
+      eqDrugNameDrugAtcRecord.query()
+        .filter(exact(eqDrugNameDrugAtcRecord.drugName(drugName.value)))
         .search()
         .entries
-        .map(nameAtcRecord => DrugAtc(nameAtcRecord.atc)))
+        .map(nameAtcRecord => DrugAtc(nameAtcRecord.drugAtc)))
   }
   def drugAtcEqDrugName(drugAtc: DrugAtc): mutable.Set[DrugName] = {
     mutable.Set.from(
-      nameAtcRecords.query()
-        .filter(exact(nameAtcRecords.atc(drugAtc.value)))
+      eqDrugNameDrugAtcRecord.query()
+        .filter(exact(eqDrugNameDrugAtcRecord.drugAtc(drugAtc.value)))
         .search()
         .entries
-        .map(nameAtcRecord => DrugName(nameAtcRecord.name))
-    )
+        .map(nameAtcRecord => DrugName(nameAtcRecord.drugName))
+      )
   }
 }

@@ -170,7 +170,6 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
       val (causes, activation) = attribute match {
         case name@SymptomName(_) => (
           List((sources.drugbank.symptomNameIsSideEffectDrugName(name), "Drugbank"),
-               (sources.drugbank.symptomNameIsSideEffectDrugAtc(name), "Drugbank"),
                (sources.meddra.symptomNameIsSideEffectDrugCompound(name), "Meddra"))
           ,
           getSymptomAttributeActivation(attribute).get
@@ -225,7 +224,6 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
       val (cures, activation) = attribute match {
         case name@SymptomName(_) => (
           List((sources.drugbank.symptomNameCuredByDrugName(name), "Drugbank"),
-               (sources.drugbank.symptomNameCuredByDrugAtc(name), "Drugbank"),
                (sources.meddra.symptomNameCuredByDrugCompound(name), "Meddra"))
           ,
           getSymptomAttributeActivation(attribute).get
@@ -305,7 +303,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
              (sources.br08303.drugAtcEqDrugName(atc), "Br08303"),
              (sources.chemicalSources.drugAtcEqDrugCompound(atc), "ChemicalSources"))
         ,
-        List((sources.drugbank.drugAtcSynonymDrugName(atc), "Drugbank"))
+        List()
         ,
         getDrugAttributeActivation(attribute).get
       )
