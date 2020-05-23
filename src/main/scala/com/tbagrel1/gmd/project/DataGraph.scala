@@ -384,7 +384,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
       case hp@SymptomHp(_) => (
         List((sources.hpOntology.symptomHpEqSymptomName(hp).asInstanceOf[Set[SymptomAttribute]], "HpOntology"))
         ,
-        List((sources.hpOntology.symptomHpSynonymSymptomName(hp).asInstanceOf[Set[SymptomAttribute]], "HpOntology"))
+        List()
         ,
         getSymptomAttributeActivation(attribute).get
       )
