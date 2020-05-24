@@ -65,7 +65,6 @@ class ChemicalSources {
         id += 1
       }
     }
-    println(s"${id} ChemicalSourceRecords inserted!")
   }
 
   def drugAtcEqDrugCompound(drugAtc: DrugAtc): mutable.Set[DrugCompound] = {

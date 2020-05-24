@@ -110,7 +110,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
     for (attribute <- attributes) {
       val (causes, activation) = attribute match {
         case name@SymptomName(_) => (
-          List((sources.omim.symptomNameCausedBySymptomName(name), "Omim"),
+          List((sources.omim.symptomNameCausedBySymptomOmim(name), "Omim"),
                (sources.orphadata.symptomNameCausedBySymptomName(name), "Orphadata"))
           ,
           getSymptomAttributeActivation(attribute).get
@@ -140,7 +140,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
               val map = getSymptomAttributeMap(causeAttribute)
               map.put(
                 causeAttribute.value, SymptomActivation(
-                  for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { activation.levelActivation.slice(0, nextLevel).max * Activation.HIGHER_SYMPTOM_TRANSMISSION_COEFF } else { 0.0 } },
+                  for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { activation.levelActivation.slice(0, nextLevel).max * Parameters.HIGHER_SYMPTOM_TRANSMISSION_COEFF } else { 0.0 } },
                   for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { SymptomActivationOrigin.HigherLevel(ArrayBuffer((attribute, source))) } else { SymptomActivationOrigin.NoOrigin } }
                   )
                 )
@@ -149,11 +149,11 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
               causeActivation.levelOrigin(nextLevel) match {
                 case SymptomActivationOrigin.NoOrigin => {
                   causeActivation.levelOrigin(nextLevel) = SymptomActivationOrigin.HigherLevel(ArrayBuffer((attribute, source)))
-                  causeActivation.levelActivation(nextLevel) = activation.levelActivation.slice(0, nextLevel).max * Activation.HIGHER_SYMPTOM_TRANSMISSION_COEFF
+                  causeActivation.levelActivation(nextLevel) = activation.levelActivation.slice(0, nextLevel).max * Parameters.HIGHER_SYMPTOM_TRANSMISSION_COEFF
                 }
                 case SymptomActivationOrigin.HigherLevel(attributesSources) => {
                   attributesSources.addOne((attribute, source))
-                  causeActivation.levelActivation(nextLevel) += activation.levelActivation.slice(0, nextLevel).max * Activation.HIGHER_SYMPTOM_TRANSMISSION_COEFF
+                  causeActivation.levelActivation(nextLevel) += activation.levelActivation.slice(0, nextLevel).max * Parameters.HIGHER_SYMPTOM_TRANSMISSION_COEFF
                 }
                 case _ => throw new Exception("Higher level symptom has an activation origin different from NoOrigin or HigherLevel")
               }
@@ -315,7 +315,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
         getDrugAttributeActivation(attribute).get
       )
     }
-    for ((eqsSynonyms, transmissionCoeff, cureOriginApp, sideEffectOriginApp) <- List((eqs, Activation.EQUAL_TRANSMISSION_COEFF, CureActivationOrigin.Equals, SideEffectActivationOrigin.Equals), (synonyms, Activation.SYNONYM_TRANSMISSION_COEFF, CureActivationOrigin.IsSynonym, SideEffectActivationOrigin.IsSynonym))) {
+    for ((eqsSynonyms, transmissionCoeff, cureOriginApp, sideEffectOriginApp) <- List((eqs, Parameters.EQUAL_TRANSMISSION_COEFF, CureActivationOrigin.Equals, SideEffectActivationOrigin.Equals), (synonyms, Parameters.SYNONYM_TRANSMISSION_COEFF, CureActivationOrigin.IsSynonym, SideEffectActivationOrigin.IsSynonym))) {
       for ((eqSynonymSet, source) <- eqsSynonyms) {
         for (eqSynonymAttribute <- eqSynonymSet) {
           getDrugAttributeActivation(eqSynonymAttribute) match {
@@ -356,33 +356,33 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   def dispatchSymptomEqSynonymAtOneStep(attribute: SymptomAttribute): Unit = {
     val (eqs, synonyms, activation) = attribute match {
       case name@SymptomName(_) => (
-        List((sources.meddra.symptomNameEqSymptomCui(name).asInstanceOf[Set[SymptomAttribute]], "Meddra"),
-          (sources.omimOntology.symptomNameEqSymptomCui(name).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"),
-          (sources.omimOntology.symptomNameEqSymptomOmim(name).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"),
-          (sources.hpOntology.symptomNameEqSymptomHp(name).asInstanceOf[Set[SymptomAttribute]], "HpOntology"),
-          (sources.hpAnnotations.symptomNameEqSymptomOmim(name).asInstanceOf[Set[SymptomAttribute]], "HpAnnotations")
+        List((sources.meddra.symptomNameEqSymptomCui(name).asInstanceOf[mutable.Set[SymptomAttribute]], "Meddra"),
+          (sources.omimOntology.symptomNameEqSymptomCui(name).asInstanceOf[mutable.Set[SymptomAttribute]], "OmimOntology"),
+          (sources.omimOntology.symptomNameEqSymptomOmim(name).asInstanceOf[mutable.Set[SymptomAttribute]], "OmimOntology"),
+          (sources.hpOntology.symptomNameEqSymptomHp(name).asInstanceOf[mutable.Set[SymptomAttribute]], "HpOntology"),
+          (sources.hpAnnotations.symptomNameEqSymptomOmim(name).asInstanceOf[mutable.Set[SymptomAttribute]], "HpAnnotations"),
+          (sources.omim.symptomNameEqSymptomOmim(name).asInstanceOf[mutable.Set[SymptomAttribute]], "Omim")
           )
         ,
         List(
-          (sources.omimOntology.symptomNameSynonymSymptomName(name).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"),
-          (sources.hpOntology.symptomNameSynonymSymptomName(name).asInstanceOf[Set[SymptomAttribute]], "HpOntology")
+          (sources.omimOntology.symptomNameSynonymSymptomName(name).asInstanceOf[mutable.Set[SymptomAttribute]], "OmimOntology"),
+          (sources.hpOntology.symptomNameSynonymSymptomName(name).asInstanceOf[mutable.Set[SymptomAttribute]], "HpOntology")
           )
         ,
         getSymptomAttributeActivation(attribute).get
       )
       case cui@SymptomCui(_) => (
         List(
-          (sources.meddra.symptomCuiEqSymptomName(cui).asInstanceOf[Set[SymptomAttribute]], "Meddra"),
-          (sources.omimOntology.symptomCuiEqSymptomName(cui).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"),
-          (sources.omimOntology.symptomCuiEqSymptomOmim(cui).asInstanceOf[Set[SymptomAttribute]], "OmimOntology")
+          (sources.meddra.symptomCuiEqSymptomName(cui).asInstanceOf[mutable.Set[SymptomAttribute]], "Meddra"),
+          (sources.omimOntology.symptomCuiEqSymptomName(cui).asInstanceOf[mutable.Set[SymptomAttribute]], "OmimOntology")
           )
         ,
-        List((sources.omimOntology.symptomCuiSynonymSymptomName(cui).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"))
+        List()
         ,
         getSymptomAttributeActivation(attribute).get
       )
       case hp@SymptomHp(_) => (
-        List((sources.hpOntology.symptomHpEqSymptomName(hp).asInstanceOf[Set[SymptomAttribute]], "HpOntology"))
+        List((sources.hpOntology.symptomHpEqSymptomName(hp).asInstanceOf[mutable.Set[SymptomAttribute]], "HpOntology"))
         ,
         List()
         ,
@@ -390,17 +390,17 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
       )
       case omim@SymptomOmim(_) => (
         List(
-          (sources.omimOntology.symptomOmimEqSymptomName(omim).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"),
-          (sources.omimOntology.symptomOmimEqSymptomCui(omim).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"),
-          (sources.hpAnnotations.symptomOmimEqSymptomName(omim).asInstanceOf[Set[SymptomAttribute]], "HpAnnotations")
+          (sources.omimOntology.symptomOmimEqSymptomName(omim).asInstanceOf[mutable.Set[SymptomAttribute]], "OmimOntology"),
+          (sources.hpAnnotations.symptomOmimEqSymptomName(omim).asInstanceOf[mutable.Set[SymptomAttribute]], "HpAnnotations"),
+          (sources.omim.symptomOmimEqSymptomName(omim).asInstanceOf[mutable.Set[SymptomAttribute]], "Omim")
           )
         ,
-        List((sources.omimOntology.symptomOmimSynonymSymptomName(omim).asInstanceOf[Set[SymptomAttribute]], "OmimOntology"))
+        List()
         ,
         getSymptomAttributeActivation(attribute).get
       )
     }
-    for ((eqsSynonyms, transmissionCoeff, originApp) <- List((eqs, Activation.EQUAL_TRANSMISSION_COEFF, SymptomActivationOrigin.Equals), (synonyms, Activation.SYNONYM_TRANSMISSION_COEFF, SymptomActivationOrigin.IsSynonym))) {
+    for ((eqsSynonyms, transmissionCoeff, originApp) <- List((eqs, Parameters.EQUAL_TRANSMISSION_COEFF, SymptomActivationOrigin.Equals), (synonyms, Parameters.SYNONYM_TRANSMISSION_COEFF, SymptomActivationOrigin.IsSynonym))) {
       for ((eqSynonymSet, source) <- eqsSynonyms) {
         for (eqSynonymAttribute <- eqSynonymSet) {
           getSymptomAttributeActivation(eqSynonymAttribute) match {

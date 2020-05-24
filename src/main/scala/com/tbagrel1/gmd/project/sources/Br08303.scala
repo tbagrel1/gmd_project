@@ -69,7 +69,6 @@ class Br08303 {
       }
     }
     bufferedFile.close()
-    println(s"${id} Br08303EqDrugNameDrugAtcRecords inserted!")
   }
 
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {

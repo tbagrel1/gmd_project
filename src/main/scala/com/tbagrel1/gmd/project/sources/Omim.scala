@@ -7,30 +7,40 @@ import com.outr.lucene4s.{DirectLucene, exact}
 import com.outr.lucene4s.field.{Field, FieldType}
 import com.outr.lucene4s.mapper.Searchable
 import com.outr.lucene4s.query.SearchTerm
-import com.tbagrel1.gmd.project.{Parameters, SymptomName, Utils}
+import com.tbagrel1.gmd.project.{Parameters, SymptomName, SymptomOmim, Utils}
 
 import scala.collection.mutable
 import scala.io.Source
 
-case class OmimCauseSymptomNameRecord(id: Int, symptomName: String, symptoms: String)
+case class OmimCauseSymptomOmimRecord(id: Int, symptomOmim: String, symptoms: String)
+case class OmimEqSymptomNameSymptomOmimRecord(id: Int, symptomName: String, symptomOmim: String)
 
 object OmimLucene extends DirectLucene(uniqueFields = List("causeSymptomNameRecordId"), Option(Paths.get("indexes/omim"))) {
-  val causeSymptomNameRecords: SearchableOmimCauseSymptomNameRecord = create.searchable[SearchableOmimCauseSymptomNameRecord]
+  val causeSymptomOmimRecords: SearchableOmimCauseSymptomOmimRecord = create.searchable[SearchableOmimCauseSymptomOmimRecord]
+  val eqSymptomNameSymptomOmimRecords: SearchableOmimEqSymptomNameSymptomOmimRecord = create.searchable[SearchableOmimEqSymptomNameSymptomOmimRecord]
 }
 
-trait SearchableOmimCauseSymptomNameRecord extends Searchable[OmimCauseSymptomNameRecord] {
-  override def idSearchTerms(causeSymptomNameRecord: OmimCauseSymptomNameRecord): List[SearchTerm] = List(exact(id(causeSymptomNameRecord.id)))
+trait SearchableOmimCauseSymptomOmimRecord extends Searchable[OmimCauseSymptomOmimRecord] {
+  override def idSearchTerms(causeSymptomOmimRecord: OmimCauseSymptomOmimRecord): List[SearchTerm] = List(exact(id(causeSymptomOmimRecord.id)))
 
-  val id: Field[Int] = OmimLucene.create.field("causeSymptomNameRecordId", FieldType.Numeric)
-  val symptomName: Field[String] = OmimLucene.create.field("causeSymptomNameRecordSymptomName", Parameters.NAME_FIELD_TYPE, false)
-  val symptoms: Field[String]  = OmimLucene.create.field("causeSymptomNameRecordSymptoms", FieldType.Stored, false) // "in" matching
+  val id: Field[Int] = OmimLucene.create.field("causeSymptomOmimRecordId", FieldType.Numeric)
+  val symptomOmim: Field[String] = OmimLucene.create.field("causeSymptomOmimRecordSymptomName", FieldType.Untokenized, false)
+  val symptoms: Field[String]  = OmimLucene.create.field("causeSymptomOmimRecordSymptoms", FieldType.Stored, false) // "in" matching
+}
+
+trait SearchableOmimEqSymptomNameSymptomOmimRecord extends Searchable[OmimEqSymptomNameSymptomOmimRecord] {
+  override def idSearchTerms(eqSymptomNameSymptomOmimRecord: OmimEqSymptomNameSymptomOmimRecord): List[SearchTerm] = List(exact(id(eqSymptomNameSymptomOmimRecord.id)))
+
+  val id: Field[Int] = OmimLucene.create.field("eqSymptomNameSymptomOmimRecordId", FieldType.Numeric)
+  val symptomName: Field[String] = OmimLucene.create.field("eqSymptomNameSymptomOmimRecordSymptomName", Parameters.NAME_FIELD_TYPE, false)
+  val symptomOmim: Field[String]  = OmimLucene.create.field("eqSymptomNameSymptomOmimRecordSymptomOmim", FieldType.Untokenized, false) // exact matching
 }
 
 object Omim {
   def main(args: Array[String]): Unit = {
     val omim = new Omim
     omim.createIndex(true)
-    println(omim.symptomNameCausedBySymptomName(SymptomName(Utils.normalize("Generalized dilating diathesis"))))
+    println(omim.symptomNameCausedBySymptomOmim(SymptomName(Utils.normalize("Generalized dilating diathesis"))))
   }
 }
 
@@ -44,39 +54,70 @@ class Omim {
     val records = content.split(Pattern.quote("*RECORD*\n")).tail.map(rawFields => rawFields.split(Pattern.quote("*FIELD* ")).tail.map(fieldWithTitle => {
       fieldWithTitle.splitAt(fieldWithTitle.indexOf('\n'))
     }))
-    var id = 0
-    for (record <- records) {
+    var causeId = 0
+    var eqId = 0
+    for (omimRecord <- records) {
       var rawTi: String = null
       var rawCs: String = null
-      for ((fieldName, fieldValue) <- record) {
+      var rawNo: String = null
+      for ((fieldName, fieldValue) <- omimRecord) {
         if (fieldName == "TI") {
           rawTi = fieldValue
         } else if (fieldName == "CS") {
           rawCs = fieldValue
+        } else if (fieldName == "NO") {
+          rawNo = fieldValue
         }
       }
-      if (rawTi != null && rawCs != null) {
+      if (rawTi != null && rawCs != null && rawNo != null) {
+        val omim = Utils.normalize(rawNo)
         val ti = rawTi.splitAt(rawTi.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize)
         val cs = Utils.normalize(rawCs)
         for (name <- ti) {
-          val record = OmimCauseSymptomNameRecord(id, name, cs)
+          val eqRecord = OmimEqSymptomNameSymptomOmimRecord(eqId, name, omim)
           if (verbose) {
-            println(record)
+            println(eqRecord)
           }
-          causeSymptomNameRecords.insert(record).index()
-          id += 1
+          eqSymptomNameSymptomOmimRecords.insert(eqRecord).index()
+          eqId += 1
         }
+        val causeRecord = OmimCauseSymptomOmimRecord(causeId, omim, cs)
+        if (verbose) {
+          println(causeRecord)
+        }
+        causeSymptomOmimRecords.insert(causeRecord).index()
+        causeId += 1
       }
     }
   }
 
-  def symptomNameCausedBySymptomName(symptomName: SymptomName): mutable.Set[SymptomName] = {
+  def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
     mutable.Set.from(
-      causeSymptomNameRecords.query()
-        .filter(exact(causeSymptomNameRecords.symptoms(symptomName.value)))
+      eqSymptomNameSymptomOmimRecords.query()
+        .filter(exact(eqSymptomNameSymptomOmimRecords.symptomName(symptomName.value)))
         .search()
         .entries
-        .map(causeSymptomNameRecord => SymptomName(causeSymptomNameRecord.symptomName))
+        .map(eqSymptomNameSymptomOmimRecord => SymptomOmim(eqSymptomNameSymptomOmimRecord.symptomOmim))
     )
+  }
+
+  def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomOmimRecords.query()
+        .filter(exact(eqSymptomNameSymptomOmimRecords.symptomOmim(symptomOmim.value)))
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomOmimRecord => SymptomName(eqSymptomNameSymptomOmimRecord.symptomName))
+    )
+  }
+
+  def symptomNameCausedBySymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
+    mutable.Set.from(
+      causeSymptomOmimRecords.query()
+        .filter(exact(causeSymptomOmimRecords.symptoms(symptomName.value)))
+        .search()
+        .entries
+        .map(causeSymptomOmimRecord => SymptomOmim(causeSymptomOmimRecord.symptomOmim))
+      )
   }
 }

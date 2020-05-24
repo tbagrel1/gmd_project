@@ -1,7 +1,7 @@
 package com.tbagrel1.gmd.project.sources
 
 import java.io.File
-import java.nio.file.{Files, Paths}
+import java.nio.file.Paths
 
 import com.outr.lucene4s.{DirectLucene, exact}
 import com.outr.lucene4s.field.{Field, FieldType}
