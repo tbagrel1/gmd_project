@@ -7,14 +7,10 @@ import com.outr.lucene4s.{DirectLucene, exact}
 import com.outr.lucene4s.field.{Field, FieldType}
 import com.outr.lucene4s.mapper.Searchable
 import com.outr.lucene4s.query.SearchTerm
-import com.tbagrel1.gmd.project.{DrugAtc, DrugName, SymptomName, Utils}
-import io.dylemma.spac._
+import com.tbagrel1.gmd.project.{DrugAtc, DrugName, Parameters, SymptomName, Utils}
 import io.dylemma.spac.xml._
 
 import scala.collection.mutable
-import scala.io.Source
-
-// name, atc, synonym, indication, toxicity
 
 case class XmlDrug(name: String, cures: String, sideEffects: String, synonyms: List[XmlSynonym], atcCodes: List[XmlAtcCode])
 case class XmlSynonym(synonym: String)
@@ -34,7 +30,7 @@ trait SearchableDrugbankEqDrugNameDrugAtcRecord extends Searchable[DrugbankEqDru
   override def idSearchTerms(eqDrugNameDrugAtcRecord: DrugbankEqDrugNameDrugAtcRecord): List[SearchTerm] = List(exact(id(eqDrugNameDrugAtcRecord.id)))
 
   val id: Field[Int] = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
-  val drugName: Field[String] = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordDrugName", FieldType.Stored, false) // "in" matching
+  val drugName: Field[String] = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordDrugName", Parameters.NAME_FIELD_TYPE, false)
   val drugAtc: Field[String]  = DrugbankLucene.create.field("eqDrugNameDrugAtcRecordDrugAtc", FieldType.Untokenized, false) // exact matching
 }
 
@@ -42,15 +38,15 @@ trait SearchableDrugbankSynonymDrugNameDrugNameRecord extends Searchable[Drugban
   override def idSearchTerms(synonymDrugNameDrugNameRecord: DrugbankSynonymDrugNameDrugNameRecord): List[SearchTerm] = List(exact(id(synonymDrugNameDrugNameRecord.id)))
 
   val id: Field[Int] = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordId", FieldType.Numeric)
-  val drugName1: Field[String] = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordDrugName1", FieldType.Stored, false) // "in" matching
-  val drugName2: Field[String]  = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordDrugName2", FieldType.Stored, false) // "in" matching
+  val drugName1: Field[String] = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordDrugName1", Parameters.NAME_FIELD_TYPE, false)
+  val drugName2: Field[String]  = DrugbankLucene.create.field("synonymDrugNameDrugNameRecordDrugName2", Parameters.NAME_FIELD_TYPE, false)
 }
 
 trait SearchableDrugbankCureSideEffectDrugNameRecord extends Searchable[DrugbankCureSideEffectDrugNameRecord] {
   override def idSearchTerms(cureSideEffectDrugNameRecord: DrugbankCureSideEffectDrugNameRecord): List[SearchTerm] = List(exact(id(cureSideEffectDrugNameRecord.id)))
 
   val id: Field[Int] = DrugbankLucene.create.field("cureSideEffectDrugNameRecordId", FieldType.Numeric)
-  val drugName: Field[String] = DrugbankLucene.create.field("cureSideEffectDrugNameRecordDrugName", FieldType.Stored, false) // "in" matching
+  val drugName: Field[String] = DrugbankLucene.create.field("cureSideEffectDrugNameRecordDrugName", Parameters.NAME_FIELD_TYPE, false)
   val cures: Field[String]  = DrugbankLucene.create.field("cureSideEffectDrugNameRecordCures", FieldType.Stored, false) // "in" matching
   val sideEffects: Field[String]  = DrugbankLucene.create.field("cureSideEffectDrugNameRecordSideEffects", FieldType.Stored, false) // "in" matching
 }

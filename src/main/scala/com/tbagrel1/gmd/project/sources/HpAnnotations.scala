@@ -2,7 +2,7 @@ package com.tbagrel1.gmd.project.sources
 
 import java.sql.{Connection, DriverManager}
 
-import com.tbagrel1.gmd.project.{Attribute, SymptomCui, SymptomHp, SymptomName, SymptomOmim, Utils}
+import com.tbagrel1.gmd.project.{Attribute, SymptomHp, SymptomName, SymptomOmim, Utils}
 
 import scala.collection.mutable
 

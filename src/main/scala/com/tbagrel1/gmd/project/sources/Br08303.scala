@@ -7,7 +7,7 @@ import com.outr.lucene4s.field.{Field, FieldType}
 import com.outr.lucene4s.mapper.Searchable
 import com.outr.lucene4s.query.SearchTerm
 import com.tbagrel1.gmd.project.sources.Br08303.isContentLine
-import com.tbagrel1.gmd.project.{DrugAtc, DrugName, Utils}
+import com.tbagrel1.gmd.project.{DrugAtc, DrugName, Parameters, Utils}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -22,7 +22,7 @@ trait SearchableBr08303EqDrugNameDrugAtcRecord extends Searchable[Br08303EqDrugN
   override def idSearchTerms(eqDrugNameDrugAtcRecord: Br08303EqDrugNameDrugAtcRecord): List[SearchTerm] = List(exact(id(eqDrugNameDrugAtcRecord.id)))
 
   val id: Field[Int] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordId", FieldType.Numeric)
-  val drugName: Field[String] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugName", FieldType.Stored, false) // "in" matching
+  val drugName: Field[String] = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugName", Parameters.NAME_FIELD_TYPE, false)
   val drugAtc: Field[String]  = Br08303Lucene.create.field("eqDrugNameDrugAtcRecordDrugAtc", FieldType.Untokenized, false) // exact matching
 }
 
