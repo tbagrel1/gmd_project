@@ -28,6 +28,25 @@ class Meddra {
 
   val connection: Connection = DriverManager.getConnection(databaseURL + database, username, password)
 
+  def getSymptomName: mutable.Set[String] = {
+    def genericGet(columnName: String, tableName: String): mutable.Set[String] = {
+      val query = s"SELECT DISTINCT ${columnName} FROM ${tableName}"
+      val statement = connection.prepareStatement(query)
+
+      val results = statement.executeQuery()
+      val resultSet = mutable.HashSet.empty[String]
+      while (results.next()) {
+        val resultString = results.getString(columnName)
+        resultSet.addOne(Utils.normalize(resultString))
+      }
+      resultSet
+    }
+    genericGet("concept_name", "meddra_all_indications") union
+    genericGet("label", "meddra") union
+    genericGet("symptom_name", "meddra_freq") union
+    genericGet("symptom_name", "meddra_all_se")
+  }
+
   def genericQuery[A <: Attribute, B <: Attribute](inputColumnName: String, inputColumnValue: A, outputColumnName: String, tableName: String, wrapper: String => B): mutable.Set[B] = {
     val query = s"SELECT DISTINCT ${outputColumnName} FROM ${tableName} WHERE UPPER(${inputColumnName}) = ?"
     val statement = connection.prepareStatement(query)

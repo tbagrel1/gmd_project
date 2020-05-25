@@ -41,6 +41,9 @@ object Br08303 {
 class Br08303 {
   import Br08303Lucene._
 
+ /* def getSymptomNames(): ={
+
+  }*/
   def createIndex(verbose: Boolean = false): Unit = {
     var id = 0
 

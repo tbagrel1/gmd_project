@@ -1,21 +1,39 @@
 package com.tbagrel1.gmd.project
 
+import java.io.{File, PrintWriter}
+
 import com.tbagrel1.gmd.project.sources.SourceCatalog
+import scalax.collection.edge.LkDiEdge
+import scalax.collection.io.dot._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.util.matching.Regex
 
-class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.HashMap[String, (String, Double)]) {
-  // TODO: problème omim.txt sur le name
-  // TODO: name vide
+class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(String, String, Double)]) {
 
-  val initialActivationAvg: Double = initialSymptoms.map(_._2._2).sum / initialSymptoms.size
+  val initialAttributesActivations: mutable.Set[(SymptomAttribute, SymptomActivation)] = {
+    (for ((value, attributeType, weight) <- initialSymptoms) yield {
+      val activation = SymptomActivation(
+        for (i <- ArrayBuffer.from(0 until Parameters.CAUSE_LEVELS)) yield { if (i == 0) { weight } else { 0.0 } },
+        for (i <- ArrayBuffer.from(0 until Parameters.CAUSE_LEVELS)) yield { if (i == 0) { SymptomActivationOrigin.UserInput } else { SymptomActivationOrigin.NoOrigin } })
+        attributeType match {
+        case "name" => mutable.Set((SymptomName(Utils.normalize(value)), activation))
+        case "cui" => mutable.Set((SymptomCui(Utils.normalize(value)), activation))
+        case "hp" => mutable.Set((SymptomHp(Utils.normalize(value)), activation))
+        case "omim" => mutable.Set((SymptomOmim(Utils.normalize(value)), activation))
+        case "nameRegex" => getSymptomNamesMatching(value.r).map(symptomName => (SymptomName(Utils.normalize(symptomName)), activation))
+      }
+    }).flatten
+  }
+
+  val initialActivationAvg: Double = initialSymptoms.map(_._3).sum / initialSymptoms.size
   val cutOff: Double = initialActivationAvg * Parameters.CUT_OFF_THRESHOLD
 
-  val symptomNameNodes: mutable.HashMap[String, SymptomActivation] = symptomNodesFromInitial("name")
-  val symptomHpNodes: mutable.HashMap[String, SymptomActivation] = symptomNodesFromInitial("hp")
-  val symptomCuiNodes: mutable.HashMap[String, SymptomActivation] = symptomNodesFromInitial("cui")
-  val symptomOmimNodes: mutable.HashMap[String, SymptomActivation] = symptomNodesFromInitial("omim")
+  val symptomNameNodes: mutable.HashMap[String, SymptomActivation] = symptomNodes[SymptomName]
+  val symptomHpNodes: mutable.HashMap[String, SymptomActivation] = symptomNodes[SymptomHp]
+  val symptomCuiNodes: mutable.HashMap[String, SymptomActivation] = symptomNodes[SymptomCui]
+  val symptomOmimNodes: mutable.HashMap[String, SymptomActivation] = symptomNodes[SymptomOmim]
 
   val drugNameNodes: mutable.HashMap[String, DrugActivation] = mutable.HashMap.empty
   val drugAtcNodes: mutable.HashMap[String, DrugActivation] = mutable.HashMap.empty
@@ -38,12 +56,15 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.HashMap
     println(s"    % Diameter of symptom space: ${sD} | Diameter of drug space: ${dD} | Total diameter: ${sD + dD}")
   }
 
-  def symptomNodesFromInitial(requestedAttributeType: String): mutable.HashMap[String, SymptomActivation] = {
-    for ((value, (attributeType, weight)) <- initialSymptoms if attributeType == requestedAttributeType)
-      yield { (value, SymptomActivation(
-        for (i <- ArrayBuffer.from(0 until Parameters.CAUSE_LEVELS)) yield { if (i == 0) { weight } else { 0.0 } },
-        for (i <- ArrayBuffer.from(0 until Parameters.CAUSE_LEVELS)) yield { if (i == 0) { SymptomActivationOrigin.UserInput } else { SymptomActivationOrigin.NoOrigin } }
-      )) }
+  def getSymptomNamesMatching(pattern: Regex): mutable.Set[String] = {
+    mutable.Set.empty  // TODO: implement
+  }
+
+  def symptomNodes[S <: SymptomAttribute]: mutable.HashMap[String, SymptomActivation] = {
+    mutable.HashMap.from(initialAttributesActivations
+      .filter { case (attribute, _) => attribute.isInstanceOf[S] }
+      .map { case (attribute, activation) => (attribute.value, activation) }
+    )
   }
 
   def getSymptomAttributeMap(attribute: SymptomAttribute): mutable.HashMap[String, SymptomActivation] = {
@@ -107,6 +128,171 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.HashMap
     println("# Done!")
   }
 
+  def createDotFile(limit: Int): Unit = {
+    sealed trait Reason
+    case object Cure extends Reason
+    case object SideEffectCause extends Reason
+    case class Cause(nextLevel: Int) extends Reason
+
+    val g = scalax.collection.mutable.Graph.empty[Attribute, LkDiEdge]
+
+    val attributeQueue = mutable.Queue.empty[(Attribute, Reason)]
+
+    val theCures = cures
+    val theSideEffectSources = sideEffectSources
+    val theCauses = causes
+
+    for ((attribute, _) <- initialAttributesActivations) {
+      g += LkDiEdge(SymptomName("User input"), attribute)("initial_symptom/user")
+    }
+
+    attributeQueue.enqueueAll(theCures.slice(0, limit min theCures.length).map(t => (DrugName(t._1), Cure)))
+    attributeQueue.enqueueAll(theSideEffectSources.slice(0, limit min theSideEffectSources.length).map(t => (DrugName(t._1), SideEffectCause)))
+    attributeQueue.enqueueAll(theCauses.slice(0, limit min theCauses.length).map(t => (SymptomName(t._1), Cause(t._3))))
+
+    def processNode(attributeReason: (Attribute, Reason)): Unit = {
+      val (attribute, reason) = attributeReason
+      attribute match {
+        case drugAttribute: DrugAttribute => {
+          val activation = getDrugAttributeActivation(drugAttribute)
+
+          reason match {
+            case Cure => {
+              activation.get.cureOrigin match {
+                case CureActivationOrigin.NoOrigin => {}
+                case CureActivationOrigin.Cures(attributesSources) => {
+                  for ((childAttribute, source) <- attributesSources) {
+                    g += LkDiEdge(childAttribute, attribute)(s"cured_by/${ source }")
+                    attributeQueue.enqueue((childAttribute, reason))
+                  }
+                }
+                case CureActivationOrigin.Equals(childAttribute, source) => {
+                  g += LkDiEdge(childAttribute, attribute)(s"equals/${ source }")
+                  attributeQueue.enqueue((childAttribute, reason))
+                }
+                case CureActivationOrigin.IsSynonym(childAttribute, source) => {
+                  g += LkDiEdge(childAttribute, attribute)(s"synonym_of/${ source }")
+                  attributeQueue.enqueue((childAttribute, reason))
+                }
+              }
+            }
+            case SideEffectCause => {
+              activation.get.sideEffectOrigin match {
+                case SideEffectActivationOrigin.NoOrigin => {}
+                case SideEffectActivationOrigin.ResponsibleFor(attributesSources) => {
+                  for ((childAttribute, source) <- attributesSources) {
+                    g += LkDiEdge(childAttribute, attribute)(s"caused_by_drug/${source}")
+                    attributeQueue.enqueue((childAttribute, reason))
+                  }
+                }
+                case SideEffectActivationOrigin.Equals(childAttribute, source) => {
+                  g += LkDiEdge(childAttribute, attribute)(s"equals/${ source }")
+                  attributeQueue.enqueue((childAttribute, reason))
+                }
+                case SideEffectActivationOrigin.IsSynonym(childAttribute, source) => {
+                  g += LkDiEdge(childAttribute, attribute)(s"synonym_of/${ source }")
+                  attributeQueue.enqueue((childAttribute, reason))
+                }
+              }
+            }
+            case Cause(_) => throw new Exception("Wrong reason for a drug attribute: Cause")
+          }
+        }
+        case symptomAttribute: SymptomAttribute => {
+          val activation = getSymptomAttributeActivation(symptomAttribute)
+
+          val imax = reason match {
+            case Cause(nextLevel) => {
+              activation.get.levelActivation.slice(0, nextLevel).zipWithIndex.maxBy(_._1)._2
+            }
+            case _ => activation.get.levelActivation.zipWithIndex.maxBy(_._1)._2
+          }
+          activation.get.levelOrigin(imax) match {
+            case SymptomActivationOrigin.NoOrigin => {}
+            case SymptomActivationOrigin.UserInput => {
+              // already processed
+            }
+            case SymptomActivationOrigin.HigherLevel(attributesSources) => {
+              for ((childAttribute, source) <- attributesSources) {
+                g += LkDiEdge(childAttribute, attribute)(s"caused_by_disease/${source}")
+                attributeQueue.enqueue((childAttribute, Cause(imax)))
+              }
+            }
+            case SymptomActivationOrigin.Equals(childAttribute, source) => {
+              g += LkDiEdge(childAttribute, attribute)(s"equals/${ source }")
+              attributeQueue.enqueue((childAttribute, reason))
+            }
+            case SymptomActivationOrigin.IsSynonym(childAttribute, source) => {
+              g += LkDiEdge(childAttribute, attribute)(s"synonym_of/${ source }")
+              attributeQueue.enqueue((childAttribute, reason))
+            }
+          }
+        }
+      }
+    }
+
+    while (attributeQueue.nonEmpty) {
+      processNode(attributeQueue.dequeue())
+    }
+
+    val root = DotRootGraph(directed = true, id = Some(Id("MediNode Map")))
+    def edgeTransformer(innerEdge: scalax.collection.Graph[Attribute, LkDiEdge]#EdgeT): Option[(DotGraph, DotEdgeStmt)] = innerEdge.edge match {
+      case LkDiEdge(source, target, rawLabel) => {
+        val label = rawLabel.asInstanceOf[String]
+        val color = if (label.startsWith("equals/")) {
+          "darkgreen"
+        } else if (label.startsWith("synonym_of/")) {
+          "chartreuse"
+        } else if (label.startsWith("caused_by_disease/")) {
+          "deeppink1"
+        } else if (label.startsWith("initial_symptom/")) {
+          "cornflowerblue"
+        } else if (label.startsWith("caused_by_drug/")) {
+          "crimson"
+        } else if (label.startsWith("cured_by/")) {
+          "gold1"
+        } else {
+          throw new Exception(s"Unknow label prefix: ${label.split('/').head}")
+        }
+        Some((root, DotEdgeStmt(
+          NodeId(source.toString),
+          NodeId(target.toString),
+          List(DotAttr(Id("label"), Id(label)),
+               DotAttr(Id("color"), Id(color)))
+        )))
+      }
+    }
+    def nodeTransformer(innerNode: scalax.collection.Graph[Attribute, LkDiEdge]#NodeT): Option[(DotGraph, DotNodeStmt)] = {
+      val attribute = innerNode.value
+      if (attribute.isInstanceOf[SymptomName] && attribute.value == "User input") {
+        Some((root, DotNodeStmt(NodeId(attribute.toString), List(
+          DotAttr(Id("label"), Id("User input"))))))
+      } else {
+        val actsString = attribute match {
+          case symptomAttribute: SymptomAttribute => {
+            val activation = getSymptomAttributeActivation(symptomAttribute).get
+            activation.levelActivation.zipWithIndex.map { case (act, lvl) => s"lvl_${lvl}: ${act}" }.mkString(", ")
+          }
+          case drugAttribute: DrugAttribute => {
+            val activation = getDrugAttributeActivation(drugAttribute).get
+            s"cure: ${activation.cureActivation}, se_source: ${activation.sideEffectActivation}"
+          }
+        }
+        Some((root, DotNodeStmt(NodeId(attribute.toString), List(
+          DotAttr(Id("label"), Id(
+            s"${attribute.toString}\n${actsString}"
+            ))
+          ))))
+      }
+    }
+
+    val dotContent = g.toDot(root, edgeTransformer, None, Some(nodeTransformer), Some(nodeTransformer))
+
+    val writer = new PrintWriter(new File("graph_output/graph.dot"))
+    writer.write(dotContent)
+    writer.close()
+  }
+
   def cures: Seq[(String, Double, CureActivationOrigin)] = {
     val theCures = for ((name, act) <- drugNameNodes if act.cureActivation > 0) yield { (name, act.cureActivation, act.cureOrigin) }
     theCures.toSeq.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
@@ -117,13 +303,13 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.HashMap
     theSideEffectSources.toSeq.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
   }
 
-  def causes: Seq[(String, Double, SymptomActivationOrigin)] = {
+  def causes: Seq[(String, Double, Int, SymptomActivationOrigin)] = {
     val theCauses = (for (i <- 1 until Parameters.CAUSE_LEVELS) yield {
       (for ((name, act) <- symptomNameNodes if act.levelActivation(i) > 0) yield {
-        (name, act.levelActivation(i), act.levelOrigin(i))
+        (name, act.levelActivation(i), i, act.levelOrigin(i))
       }).toSeq
     }).flatten
-    theCauses.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
+    theCauses.sortWith { case ((_, act1, _, _), (_, act2, _, _)) => act1 > act2 }
   }
 
   def dispatchCausedByAt(nextLevel: Int, attributes: Seq[SymptomAttribute]): Seq[SymptomAttribute] = {

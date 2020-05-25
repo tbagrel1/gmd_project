@@ -9,9 +9,8 @@ object Main {
     val sources = new SourceCatalog
     sources.createIndex(true)
     println("\n\n\n")
-    val graph = new DataGraph(sources, mutable.HashMap(
-      (Utils.normalize("abdominal pain"), ("name", 2.0)),
-      (Utils.normalize("headache"), ("name", 1.0))
+    val graph = new DataGraph(sources, mutable.Set(
+      ("Penis disorder", "name", 1.0)
     ))
     graph.sendLight()
     println("Disease causes\n--------------------------------------")
@@ -23,5 +22,6 @@ object Main {
     println("\n\nCures\n--------------------------------------")
     val cures = graph.cures
     println(cures.slice(0, 10 min cures.length))
+    graph.createDotFile(3)
   }
 }

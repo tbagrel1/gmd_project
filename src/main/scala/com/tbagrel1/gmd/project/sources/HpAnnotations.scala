@@ -8,9 +8,34 @@ import scala.collection.mutable
 
 object HpAnnotations {
   def main(args: Array[String]): Unit = {
+    println(getNames(SymptomName(Utils.normalize("ACROMICRIC DYSPLASIA"))))
+    println(getNames(SymptomName(Utils.normalize("#102500 HAJDU-CHENEY SYNDROME; HJCYS;;ACROOSTEOLYSIS WITH OSTEOPOROSIS AND CHANGES IN SKULL AND" +
+                       " MANDIBLE;;CHENEY SYNDROME;;ARTHRODENTOOSTEODYSPLASIA;;SERPENTINE FIBULA-POLYCYSTIC KIDNEY " +
+                       "SYNDROME; SFPKS"))))
     val hpAnnotations = new HpAnnotations
     println(hpAnnotations.symptomHpCausedBySymptomName(SymptomHp(Utils.normalize("0000263"))))
   }
+
+  def getNames(symptomName: SymptomName): mutable.Set[SymptomName] = {
+    val pattern = ".[0-9]{3,}".r
+    (if (pattern.findPrefixOf(symptomName.value).isDefined) {
+      val strippedNames = symptomName.value.strip
+      mutable.Set.from(strippedNames.splitAt(strippedNames.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize))
+    } else {
+      mutable.Set(symptomName.value)
+    }).map(SymptomName.apply)
+  }
+
+def getSymptomName: mutable.Set[String] = {
+  val query = s"SELECT DISTINCT disease_label FROM ${tableName}"
+  val statement = connection.prepareStatement(query)
+  val results = statement.executeQuery()
+  val resultSet = mutable.HashSet.empty[String]
+  while (results.next()) {
+    val resultString = results.getString (columnName)
+    resultSet.addOne (Utils.normalize (resultString) )
+  }
+  resultSet
 }
 
 class HpAnnotations {
@@ -31,7 +56,7 @@ class HpAnnotations {
     val resultSet = mutable.HashSet.empty[B]
     while (results.next()) {
       val resultString = results.getString(outputColumnName)
-      resultSet.addOne(wrapper(Utils.normalize(resultString)))
+      resultSet.addOne(wrapper(resultString))
     }
 
     resultSet.filter(!_.value.isEmpty)
@@ -63,12 +88,14 @@ class HpAnnotations {
 
   def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = {
     val symptomOmimWithPrefix = SymptomOmim("OMIM:" + symptomOmim.value)
-    genericQuery("disease_db_and_id", symptomOmimWithPrefix, "disease_label", "phenotype_annotation", SymptomName.apply, Parameters.EXACT_SQL)
+    genericQuery("disease_db_and_id", symptomOmimWithPrefix, "disease_label", "phenotype_annotation", SymptomName.apply, Parameters.EXACT_SQL).flatMap(HpAnnotations.getNames)
   }
+
   def symptomHpCausedBySymptomName(symptomHp: SymptomHp): mutable.Set[SymptomName] = {
     val symptomHpWithPrefix = SymptomHp("HP:" + symptomHp.value)
-    genericQuery("sign_id", symptomHpWithPrefix, "disease_label", "phenotype_annotation", SymptomName.apply, Parameters.EXACT_SQL)
+    genericQuery("sign_id", symptomHpWithPrefix, "disease_label", "phenotype_annotation", SymptomName.apply, Parameters.EXACT_SQL).flatMap(HpAnnotations.getNames)
   }
+
   def symptomHpCausedBySymptomOmim(symptomHp: SymptomHp): mutable.Set[SymptomOmim] = {
     val symptomHpWithPrefix = SymptomHp("HP:" + symptomHp.value)
     genericQueryOmimOutput("sign_id", symptomHpWithPrefix, "disease_db_and_id", "phenotype_annotation", SymptomOmim.apply, Parameters.EXACT_SQL)

@@ -71,7 +71,8 @@ class Omim {
       }
       if (rawTi != null && rawCs != null && rawNo != null) {
         val omim = Utils.normalize(rawNo)
-        val ti = rawTi.splitAt(rawTi.strip.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize)
+        val strippedTi = rawTi.strip
+        val ti = strippedTi.splitAt(strippedTi.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize)
         val cs = Utils.normalize(rawCs)
         for (name <- ti) {
           val eqRecord = OmimEqSymptomNameSymptomOmimRecord(eqId, name, omim)
