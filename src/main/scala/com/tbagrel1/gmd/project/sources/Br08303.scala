@@ -14,7 +14,7 @@ import scala.io.Source
 
 case class Br08303EqDrugNameDrugAtcRecord(id: Int, drugName: String, drugAtc: String)
 
-object Br08303Lucene extends DirectLucene(uniqueFields = List("eqDrugNameDrugAtcRecordId"), Option(Paths.get("indexes/br08303"))) {
+object Br08303Lucene extends DirectLucene(appendIfExists = true, uniqueFields = List("eqDrugNameDrugAtcRecordId"), directory = Option(Paths.get("indexes/br08303"))) {
   val eqDrugNameDrugAtcRecord: SearchableBr08303EqDrugNameDrugAtcRecord = create.searchable[SearchableBr08303EqDrugNameDrugAtcRecord]
 }
 
@@ -41,9 +41,6 @@ object Br08303 {
 class Br08303 {
   import Br08303Lucene._
 
- /* def getSymptomNames(): ={
-
-  }*/
   def createIndex(verbose: Boolean = false): Unit = {
     var id = 0
 
@@ -74,6 +71,7 @@ class Br08303 {
       }
     }
     bufferedFile.close()
+    commit()
   }
 
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {

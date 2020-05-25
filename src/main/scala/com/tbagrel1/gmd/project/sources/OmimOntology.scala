@@ -16,7 +16,7 @@ case class OmimOntologyEqSymptomNameSymptomOmimRecord(id: Int, symptomName: Stri
 case class OmimOntologyEqSymptomNameSymptomCuiRecord(id: Int, symptomName: String, symptomCui: String)
 case class OmimOntologySynonymSymptomNameSymptomNameRecord(id: Int, symptomName1: String, symptomName2: String)
 
-object OmimOntologyLucene extends DirectLucene(uniqueFields = List("eqSymptomNameSymptomOmimRecordId", "eqSymptomNameSymptomCuiRecordId", "synonymSymptomNameSymptomNameId"), Option(Paths.get("indexes/omim_ontology"))) {
+object OmimOntologyLucene extends DirectLucene(appendIfExists = true, uniqueFields = List("eqSymptomNameSymptomOmimRecordId", "eqSymptomNameSymptomCuiRecordId", "synonymSymptomNameSymptomNameId"), directory = Option(Paths.get("indexes/omim_ontology"))) {
   val eqSymptomNameSymptomOmimRecords: SearchableOmimOntologyEqSymptomNameSymptomOmimRecord = create.searchable[SearchableOmimOntologyEqSymptomNameSymptomOmimRecord]
   val eqSymptomNameSymptomCuiRecords: SearchableOmimOntologyEqSymptomNameSymptomCuiRecord = create.searchable[SearchableOmimOntologyEqSymptomNameSymptomCuiRecord]
   val synonymSymptomNameSymptomNameRecords: SearchableOmimOntologySynonymSymptomNameSymptomName = create.searchable[SearchableOmimOntologySynonymSymptomNameSymptomName]
@@ -108,6 +108,7 @@ class OmimOntology {
         }
       }
     }
+    commit()
   }
 
   def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
@@ -117,6 +118,30 @@ class OmimOntology {
         .search()
         .entries
         .map(eqSymptomNameSymptomOmimRecord => SymptomOmim(eqSymptomNameSymptomOmimRecord.symptomOmim)))
+  }
+
+  def getSymptomNames: mutable.Set[String] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomOmimRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomName)
+    ) union mutable.Set.from(
+      eqSymptomNameSymptomCuiRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomCuiRecord => eqSymptomNameSymptomCuiRecord.symptomName)
+    ) union mutable.Set.from(
+        synonymSymptomNameSymptomNameRecords.query()
+          .search()
+          .entries
+          .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName2)
+    ) union  mutable.Set.from(
+      synonymSymptomNameSymptomNameRecords.query()
+        .search()
+        .entries
+        .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName1)
+    )
   }
 
   def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = {

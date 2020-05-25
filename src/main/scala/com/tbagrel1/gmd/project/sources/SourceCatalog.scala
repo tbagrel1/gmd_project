@@ -23,16 +23,11 @@ class SourceCatalog() {
     orphadata.createIndex(verbose)
   }
 
-  def getAllSymptomName(symptomName : String): mutable.Set[String] = {/*
-    br08303.getSymptomName(symptomName)
-    chemicalSources.getSymptomName(symptomName)
-    drugbank.getSymptomName(symptomName)
-    hpOntology.getSymptomName(symptomName)
-    meddra.getSymptomName(symptomName)
-    hpAnnotations.getSymptomName(symptomName)
-    omim.getSymptomName(symptomName)
-    omimOntology.getSymptomName(symptomName)
-    orphadata.getSymptomName(symptomName)*/
-    mutable.Set.empty
+  def getAllSymptomNames: mutable.Set[String] = {
+    omimOntology.getSymptomNames union
+    meddra.getSymptomNames union
+    hpAnnotations.getSymptomNames union
+    hpOntology.getSymptomNames union
+    omim.getSymptomNames
   }
 }

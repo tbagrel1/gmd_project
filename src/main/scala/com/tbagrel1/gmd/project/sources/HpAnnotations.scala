@@ -9,9 +9,17 @@ import scala.collection.mutable
 object HpAnnotations {
   def main(args: Array[String]): Unit = {
     println(getNames(SymptomName(Utils.normalize("ACROMICRIC DYSPLASIA"))))
-    println(getNames(SymptomName(Utils.normalize("#102500 HAJDU-CHENEY SYNDROME; HJCYS;;ACROOSTEOLYSIS WITH OSTEOPOROSIS AND CHANGES IN SKULL AND" +
-                       " MANDIBLE;;CHENEY SYNDROME;;ARTHRODENTOOSTEODYSPLASIA;;SERPENTINE FIBULA-POLYCYSTIC KIDNEY " +
-                       "SYNDROME; SFPKS"))))
+    println(
+      getNames(
+        SymptomName(
+          Utils.normalize(
+            "#102500 HAJDU-CHENEY SYNDROME; HJCYS;;ACROOSTEOLYSIS WITH OSTEOPOROSIS AND CHANGES IN SKULL AND" +
+              " MANDIBLE;;CHENEY SYNDROME;;ARTHRODENTOOSTEODYSPLASIA;;SERPENTINE FIBULA-POLYCYSTIC KIDNEY " +
+              "SYNDROME; SFPKS"
+            )
+          )
+        )
+      )
     val hpAnnotations = new HpAnnotations
     println(hpAnnotations.symptomHpCausedBySymptomName(SymptomHp(Utils.normalize("0000263"))))
   }
@@ -20,28 +28,36 @@ object HpAnnotations {
     val pattern = ".[0-9]{3,}".r
     (if (pattern.findPrefixOf(symptomName.value).isDefined) {
       val strippedNames = symptomName.value.strip
-      mutable.Set.from(strippedNames.splitAt(strippedNames.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize))
+      mutable.Set
+        .from(
+          strippedNames.splitAt(strippedNames.indexOf(' '))
+            ._2
+            .replace('\n', ' ')
+            .split(';')
+            .filterNot(_.isEmpty)
+            .map(Utils.normalize)
+          )
     } else {
       mutable.Set(symptomName.value)
     }).map(SymptomName.apply)
   }
-
-def getSymptomName: mutable.Set[String] = {
-  val query = s"SELECT DISTINCT disease_label FROM ${tableName}"
-  val statement = connection.prepareStatement(query)
-  val results = statement.executeQuery()
-  val resultSet = mutable.HashSet.empty[String]
-  while (results.next()) {
-    val resultString = results.getString (columnName)
-    resultSet.addOne (Utils.normalize (resultString) )
-  }
-  resultSet
 }
-
 class HpAnnotations {
   val databasePath = "jdbc:sqlite:./data_sources/"
   val database = "hpo_annotations.sqlite"
   var connection: Connection = DriverManager.getConnection(databasePath + database)
+
+  def getSymptomNames: mutable.Set[String] = {
+    val query = s"SELECT DISTINCT disease_label FROM phenotype_annotation"
+    val statement = connection.prepareStatement(query)
+    val results = statement.executeQuery()
+    val resultSet = mutable.HashSet.empty[String]
+    while (results.next()) {
+      val resultString = results.getString("disease_label")
+      resultSet.addOne (Utils.normalize (resultString) )
+    }
+    resultSet
+  }
 
   def genericQuery[A <: Attribute, B <: Attribute](inputColumnName: String, inputColumnValue: A, outputColumnName: String, tableName: String, wrapper: String => B, exact: Boolean): mutable.Set[B] = {
     val query = if (exact) {

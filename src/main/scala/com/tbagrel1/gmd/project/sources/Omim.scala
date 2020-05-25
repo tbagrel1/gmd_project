@@ -15,7 +15,7 @@ import scala.io.Source
 case class OmimCauseSymptomOmimRecord(id: Int, symptomOmim: String, symptoms: String)
 case class OmimEqSymptomNameSymptomOmimRecord(id: Int, symptomName: String, symptomOmim: String)
 
-object OmimLucene extends DirectLucene(uniqueFields = List("causeSymptomNameRecordId"), Option(Paths.get("indexes/omim"))) {
+object OmimLucene extends DirectLucene(appendIfExists = true, uniqueFields = List("causeSymptomNameRecordId"), directory = Option(Paths.get("indexes/omim"))) {
   val causeSymptomOmimRecords: SearchableOmimCauseSymptomOmimRecord = create.searchable[SearchableOmimCauseSymptomOmimRecord]
   val eqSymptomNameSymptomOmimRecords: SearchableOmimEqSymptomNameSymptomOmimRecord = create.searchable[SearchableOmimEqSymptomNameSymptomOmimRecord]
 }
@@ -94,8 +94,24 @@ class Omim {
         }
       }
     }
+    commit()
   }
 
+  def getSymptomNames: mutable.Set[String] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomOmimRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomName)
+    ) union
+    mutable.Set.from(
+      causeSymptomOmimRecords.query()
+        .search()
+        .entries
+        .map(causeSymptomOmimRecord => causeSymptomOmimRecord.symptoms)
+    )
+
+  }
   def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
     mutable.Set.from(
       eqSymptomNameSymptomOmimRecords.query()

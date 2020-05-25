@@ -9,5 +9,5 @@ object Parameters {
   val NAME_FIELD_TYPE: FieldType = FieldType.Untokenized  // exact matching for names
   val EXACT_SQL: Boolean = NAME_FIELD_TYPE == FieldType.Untokenized
   val CAUSE_LEVELS: Int = 2
-  val CUT_OFF_THRESHOLD: Double = 0.65
+  val CUT_OFF_THRESHOLD: Double = 0.7
 }

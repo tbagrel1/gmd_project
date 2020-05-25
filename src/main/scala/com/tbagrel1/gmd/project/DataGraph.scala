@@ -57,7 +57,12 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
   }
 
   def getSymptomNamesMatching(pattern: Regex): mutable.Set[String] = {
-    mutable.Set.empty  // TODO: implement
+    val resultSet = mutable.HashSet.empty[String]
+    val scalaPattern = s"(?i)${pattern}".r
+    val allSymptomNames = sources.getAllSymptomNames
+    for (symptomName <- allSymptomNames)
+      scalaPattern.findAllMatchIn(symptomName)
+    resultSet  // TODO: implement
   }
 
   def symptomNodes[S <: SymptomAttribute]: mutable.HashMap[String, SymptomActivation] = {

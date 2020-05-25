@@ -50,7 +50,7 @@ class HpOntologyParser extends RegexParsers {
   def allEntities: Parser[List[mutable.HashMap[String, mutable.ArrayBuffer[String]]]] = rep(entity)
 }
 
-object HpOntologyLucene extends DirectLucene(uniqueFields = List("eqSymptomNameSymptomHpRecordId", "synonymSymptomNameSymptomNameRecordId"), Option(Paths.get("indexes/hp_ontology"))) {
+object HpOntologyLucene extends DirectLucene(appendIfExists = true, uniqueFields = List("eqSymptomNameSymptomHpRecordId", "synonymSymptomNameSymptomNameRecordId"), directory = Option(Paths.get("indexes/hp_ontology"))) {
   val eqSymptomNameSymptomHpRecords: SearchableHpOntologyEqSymptomNameSymptomHpRecord = create.searchable[SearchableHpOntologyEqSymptomNameSymptomHpRecord]
   val synonymSymptomNameSymptomNameRecords: SearchableHpOntologySynonymSymptomNameSymptomNameRecord = create.searchable[SearchableHpOntologySynonymSymptomNameSymptomNameRecord]
 }
@@ -122,6 +122,28 @@ class HpOntology {
         }
       }
     }
+    commit()
+  }
+
+  def getSymptomNames: mutable.Set[String] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomHpRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomHpRecord => eqSymptomNameSymptomHpRecord.symptomName)
+    ) union
+    mutable.Set.from(
+      synonymSymptomNameSymptomNameRecords.query()
+        .search()
+        .entries
+        .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName1)
+    ) union
+    mutable.Set.from(
+      synonymSymptomNameSymptomNameRecords.query()
+        .search()
+        .entries
+        .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName2)
+    )
   }
 
   def symptomNameEqSymptomHp(symptomName: SymptomName): mutable.Set[SymptomHp] = {

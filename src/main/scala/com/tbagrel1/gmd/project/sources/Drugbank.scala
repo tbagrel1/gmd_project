@@ -20,7 +20,7 @@ case class DrugbankEqDrugNameDrugAtcRecord(id: Int, drugName: String, drugAtc: S
 case class DrugbankSynonymDrugNameDrugNameRecord(id: Int, drugName1: String, drugName2: String)
 case class DrugbankCureSideEffectDrugNameRecord(id: Int, drugName: String, cures: String, sideEffects: String)
 
-object DrugbankLucene extends DirectLucene(uniqueFields = List("eqDrugNameDrugAtcRecordId", "synonymDrugNameDrugNameRecordId", "cureSideEffectDrugNameRecordId"), Option(Paths.get("indexes/drugbank"))) {
+object DrugbankLucene extends DirectLucene(appendIfExists = true, uniqueFields = List("eqDrugNameDrugAtcRecordId", "synonymDrugNameDrugNameRecordId", "cureSideEffectDrugNameRecordId"), directory = Option(Paths.get("indexes/drugbank"))) {
   val eqDrugNameDrugAtcRecords: SearchableDrugbankEqDrugNameDrugAtcRecord = create.searchable[SearchableDrugbankEqDrugNameDrugAtcRecord]
   val synonymDrugNameDrugNameRecords: SearchableDrugbankSynonymDrugNameDrugNameRecord = create.searchable[SearchableDrugbankSynonymDrugNameDrugNameRecord]
   val cureSideEffectDrugNameRecords: SearchableDrugbankCureSideEffectDrugNameRecord = create.searchable[SearchableDrugbankCureSideEffectDrugNameRecord]
@@ -122,6 +122,7 @@ class Drugbank {
           }
         }
       }) parse file
+    commit()
   }
 
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {

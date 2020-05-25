@@ -14,7 +14,7 @@ import scala.collection.mutable
 
 case class ChemicalSourcesEqDrugAtcDrugCompoundRecord(id: Int, drugAtc: String, drugCompound: String)
 
-object ChemicalSourcesLucene extends DirectLucene(uniqueFields = List("eqDrugAtcDrugCompoundRecordId"), Option(Paths.get("indexes/chemical_sources"))) {
+object ChemicalSourcesLucene extends DirectLucene(appendIfExists = true, uniqueFields = List("eqDrugAtcDrugCompoundRecordId"), directory = Option(Paths.get("indexes/chemical_sources"))) {
   val eqDrugAtcDrugCompoundRecords: SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord = create.searchable[SearchableChemicalSourcesEqDrugAtcDrugCompoundRecord]
 }
 
@@ -67,6 +67,7 @@ class ChemicalSources {
         id += 1
       }
     }
+    commit()
   }
 
   def drugAtcEqDrugCompound(drugAtc: DrugAtc): mutable.Set[DrugCompound] = {

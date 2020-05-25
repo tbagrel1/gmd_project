@@ -7,10 +7,17 @@ import scala.collection.mutable
 object Main {
   def main(args: Array[String]): Unit = {
     val sources = new SourceCatalog
-    sources.createIndex(true)
+    if (args.nonEmpty) {
+      sources.createIndex(true)
+    }
     println("\n\n\n")
+    println(sources.getAllSymptomNames)
+    println(sources.getAllSymptomNames.size)
+    println("\n\n\n")
+/*
     val graph = new DataGraph(sources, mutable.Set(
-      ("Penis disorder", "name", 1.0)
+      ("Abdominal pain", "name", 1.0),
+      ("Headache", "name", 1.0)
     ))
     graph.sendLight()
     println("Disease causes\n--------------------------------------")
@@ -23,5 +30,6 @@ object Main {
     val cures = graph.cures
     println(cures.slice(0, 10 min cures.length))
     graph.createDotFile(3)
+ */
   }
 }
