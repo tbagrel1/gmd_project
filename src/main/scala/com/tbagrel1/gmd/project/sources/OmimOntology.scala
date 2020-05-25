@@ -76,30 +76,36 @@ class OmimOntology {
 
       if (fields(0).startsWith("http://purl.bioontology.org/ontology/OMIM/")) {
         val omim = Utils.normalize(Utils.stripPrefix(fields(0), "http://purl.bioontology.org/ontology/OMIM/"))
-        val eqNameOmimRecord = OmimOntologyEqSymptomNameSymptomOmimRecord(eqNameOmimId, name, omim)
-        if (verbose) {
-          println(eqNameOmimRecord)
+        if (!name.isEmpty && !omim.isEmpty) {
+          val eqNameOmimRecord = OmimOntologyEqSymptomNameSymptomOmimRecord(eqNameOmimId, name, omim)
+          if (verbose) {
+            println(eqNameOmimRecord)
+          }
+          eqSymptomNameSymptomOmimRecords.insert(eqNameOmimRecord).index()
+          eqNameOmimId += 1
         }
-        eqSymptomNameSymptomOmimRecords.insert(eqNameOmimRecord).index()
-        eqNameOmimId += 1
       }
 
       for (cui <- cuis) {
-        val eqNameCuiRecord = OmimOntologyEqSymptomNameSymptomCuiRecord(eqNameCuiId, name, cui)
-        if (verbose) {
-          println(eqNameCuiRecord)
+        if (!name.isEmpty && !cui.isEmpty) {
+          val eqNameCuiRecord = OmimOntologyEqSymptomNameSymptomCuiRecord(eqNameCuiId, name, cui)
+          if (verbose) {
+            println(eqNameCuiRecord)
+          }
+          eqSymptomNameSymptomCuiRecords.insert(eqNameCuiRecord).index()
+          eqNameCuiId += 1
         }
-        eqSymptomNameSymptomCuiRecords.insert(eqNameCuiRecord).index()
-        eqNameCuiId += 1
       }
 
       for (synonym <- synonyms) {
-        val synonymRecord = OmimOntologySynonymSymptomNameSymptomNameRecord(synonymId, name, synonym)
-        if (verbose) {
-          println(synonymRecord)
+        if (!name.isEmpty && !synonym.isEmpty) {
+          val synonymRecord = OmimOntologySynonymSymptomNameSymptomNameRecord(synonymId, name, synonym)
+          if (verbose) {
+            println(synonymRecord)
+          }
+          synonymSymptomNameSymptomNameRecords.insert(synonymRecord).index()
+          synonymId += 1
         }
-        synonymSymptomNameSymptomNameRecords.insert(synonymRecord).index()
-        synonymId += 1
       }
     }
   }

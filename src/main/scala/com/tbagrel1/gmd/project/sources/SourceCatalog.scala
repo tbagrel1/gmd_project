@@ -10,4 +10,14 @@ class SourceCatalog() {
   val omim: Omim = new Omim
   val omimOntology: OmimOntology = new OmimOntology
   val orphadata: Orphadata = new Orphadata
+
+  def createIndex(verbose: Boolean = false): Unit = {
+    br08303.createIndex(verbose)
+    chemicalSources.createIndex(verbose)
+    drugbank.createIndex(verbose)
+    hpOntology.createIndex(verbose)
+    omim.createIndex(verbose)
+    omimOntology.createIndex(verbose)
+    orphadata.createIndex(verbose)
+  }
 }

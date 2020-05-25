@@ -60,12 +60,14 @@ class Br08303 {
           bracketIndex = drugName.length
         }
         drugName = Utils.normalize(drugName.slice(0, parenthesisIndex min bracketIndex))
-        val record = Br08303EqDrugNameDrugAtcRecord(id, drugName, drugAtc)
-        if (verbose) {
-          println(record)
+        if (!drugName.isEmpty && !drugAtc.isEmpty) {
+          val record = Br08303EqDrugNameDrugAtcRecord(id, drugName, drugAtc)
+          if (verbose) {
+            println(record)
+          }
+          eqDrugNameDrugAtcRecord.insert(record).index()
+          id += 1
         }
-        eqDrugNameDrugAtcRecord.insert(record).index()
-        id += 1
       }
     }
     bufferedFile.close()

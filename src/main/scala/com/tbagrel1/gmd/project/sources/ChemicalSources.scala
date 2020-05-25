@@ -49,14 +49,16 @@ class ChemicalSources {
       val compound2 = Utils.normalize(fields(1).map(c => if (c == 's' || c == 'm') { '1' } else { c }))
       val atc = Utils.normalize(fields(3))
 
-      val record1 = ChemicalSourcesEqDrugAtcDrugCompoundRecord(id, atc, compound1)
-      if (verbose) {
-        println(record1)
+      if (!atc.isEmpty && !compound1.isEmpty) {
+        val record1 = ChemicalSourcesEqDrugAtcDrugCompoundRecord(id, atc, compound1)
+        if (verbose) {
+          println(record1)
+        }
+        eqDrugAtcDrugCompoundRecords.insert(record1).index()
+        id += 1
       }
-      eqDrugAtcDrugCompoundRecords.insert(record1).index()
-      id += 1
 
-      if (compound1 != compound2) {
+      if (!atc.isEmpty && !compound2.isEmpty && compound1 != compound2) {
         val record2 = ChemicalSourcesEqDrugAtcDrugCompoundRecord(id, atc, compound2)
         if (verbose) {
           println(record2)

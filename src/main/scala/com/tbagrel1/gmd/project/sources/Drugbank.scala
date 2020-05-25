@@ -86,27 +86,40 @@ class Drugbank {
     var cureSideEffectId = 0
     val file = new File("data_sources/drugbank.xml")
       drugTransformer.parseForeach(xmlDrug => {
-        val cureSideEffectRecord = DrugbankCureSideEffectDrugNameRecord(cureSideEffectId, Utils.normalize(xmlDrug.name), Utils.normalize(xmlDrug.cures), Utils.normalize(xmlDrug.sideEffects))
-        if (verbose) {
-          println(cureSideEffectRecord)
-        }
-        cureSideEffectDrugNameRecords.insert(cureSideEffectRecord).index()
-        cureSideEffectId += 1
-        for (atcCode <- xmlDrug.atcCodes) {
-          val eqRecord = DrugbankEqDrugNameDrugAtcRecord(eqId, Utils.normalize(xmlDrug.name), Utils.normalize(atcCode.atc))
+        val name = Utils.normalize(xmlDrug.name)
+        val cures = Utils.normalize(xmlDrug.cures)
+        val sideEffects = Utils.normalize(xmlDrug.sideEffects)
+
+        if (!name.isEmpty && (!cures.isEmpty || !sideEffects.isEmpty)) {
+          val cureSideEffectRecord = DrugbankCureSideEffectDrugNameRecord(cureSideEffectId, name, cures, sideEffects)
           if (verbose) {
-            println(eqRecord)
+            println(cureSideEffectRecord)
           }
-          eqDrugNameDrugAtcRecords.insert(eqRecord).index()
-          eqId += 1
+          cureSideEffectDrugNameRecords.insert(cureSideEffectRecord).index()
+          cureSideEffectId += 1
+        }
+
+        for (atcCode <- xmlDrug.atcCodes) {
+          val atc = Utils.normalize(atcCode.atc)
+          if (!name.isEmpty && !atc.isEmpty) {
+            val eqRecord = DrugbankEqDrugNameDrugAtcRecord(eqId, name, atc)
+            if (verbose) {
+              println(eqRecord)
+            }
+            eqDrugNameDrugAtcRecords.insert(eqRecord).index()
+            eqId += 1
+          }
         }
         for (synonym <- xmlDrug.synonyms) {
-          val synonymRecord = DrugbankSynonymDrugNameDrugNameRecord(synonymId, Utils.normalize(xmlDrug.name), Utils.normalize(synonym.synonym))
-          if (verbose) {
-            println(synonymRecord)
+          val synonymName = Utils.normalize(synonym.synonym)
+          if (!name.isEmpty && !synonymName.isEmpty) {
+            val synonymRecord = DrugbankSynonymDrugNameDrugNameRecord(synonymId, name, synonymName)
+            if (verbose) {
+              println(synonymRecord)
+            }
+            synonymDrugNameDrugNameRecords.insert(synonymRecord).index()
+            synonymId += 1
           }
-          synonymDrugNameDrugNameRecords.insert(synonymRecord).index()
-          synonymId += 1
         }
       }) parse file
   }

@@ -28,8 +28,6 @@ class Meddra {
 
   val connection: Connection = DriverManager.getConnection(databaseURL + database, username, password)
 
-  // TODO: est-ce que pour les recherches SQL sur un name, on fait une recherche approchée (avec LIKE au lieu de =) ?
-
   def genericQuery[A <: Attribute, B <: Attribute](inputColumnName: String, inputColumnValue: A, outputColumnName: String, tableName: String, wrapper: String => B): mutable.Set[B] = {
     val query = s"SELECT DISTINCT ${outputColumnName} FROM ${tableName} WHERE UPPER(${inputColumnName}) = ?"
     val statement = connection.prepareStatement(query)
@@ -42,23 +40,35 @@ class Meddra {
       resultSet.addOne(wrapper(Utils.normalize(resultString)))
     }
 
-    resultSet
+    resultSet.filter(!_.value.isEmpty)
   }
 
   def symptomNameEqSymptomCui(symptomName: SymptomName): mutable.Set[SymptomCui] = {
     val resultSet1 = genericQuery("label", symptomName, "cui", "meddra", SymptomCui.apply)
-    val resultSet2 = genericQuery("concept_name", symptomName, "cui", "meddra_all_indications", SymptomCui.apply)
+    // val resultSet2 = genericQuery("concept_name", symptomName, "cui", "meddra_all_indications", SymptomCui.apply)
     val resultSet3 = genericQuery("concept_name", symptomName, "cui_of_meddra_term", "meddra_all_indications", SymptomCui.apply)
-    // TODO: est-ce qu'il ne faut pas regarder aussi dans all_se et freq ?
-    resultSet1 union resultSet2 union resultSet3
+    // val resultSet4 = genericQuery("side_effect_name", symptomName, "cui", "meddra_freq", SymptomCui.apply)
+    val resultSet5 = genericQuery("side_effect_name", symptomName, "meddra_concept_id", "meddra_freq", SymptomCui.apply)
+    // val resultSet6 = genericQuery("side_effect_name", symptomName, "cui", "meddra_all_se", SymptomCui.apply)
+    val resultSet7 = genericQuery("side_effect_name", symptomName, "cui_of_meddra_term", "meddra_all_se", SymptomCui.apply)
+
+    // DO: est-ce qu'il ne faut pas regarder aussi dans all_se et freq ?
+    // resultSet1 union resultSet2 union resultSet3 union resultSet4 union resultSet5 union resultSet6 union resultSet7
+    resultSet1 union resultSet3 union resultSet5 union resultSet7
   }
 
   def symptomCuiEqSymptomName(symptomCui: SymptomCui): mutable.Set[SymptomName] = {
     val resultSet1 = genericQuery("cui", symptomCui, "label", "meddra", SymptomName.apply)
-    val resultSet2 = genericQuery("cui", symptomCui, "concept_name", "meddra_all_indications", SymptomName.apply)
+    // val resultSet2 = genericQuery("cui", symptomCui, "concept_name", "meddra_all_indications", SymptomName.apply)
     val resultSet3 = genericQuery("cui_of_meddra_term ", symptomCui, "concept_name", "meddra_all_indications", SymptomName.apply)
-    // TODO: est-ce qu'il ne faut pas regarder aussi dans all_se et freq ?
-    resultSet1 union resultSet2 union resultSet3
+    // val resultSet4 = genericQuery("cui", symptomCui, "side_effect_name", "meddra_all_se", SymptomName.apply)
+    val resultSet5 = genericQuery("cui_of_meddra_term ", symptomCui, "side_effect_name", "meddra_all_se", SymptomName.apply)
+    // val resultSet6 = genericQuery("cui", symptomCui, "side_effect_name", "meddra_freq", SymptomName.apply)
+    val resultSet7 = genericQuery("meddra_concept_id ", symptomCui, "side_effect_name", "meddra_freq", SymptomName.apply)
+
+    // DO: est-ce qu'il ne faut pas regarder aussi dans all_se et freq ?
+    // resultSet1 union resultSet2 union resultSet3 union resultSet4 union resultSet5 union resultSet6 union resultSet7
+    resultSet1 union resultSet3 union resultSet5 union resultSet7
   }
 
   def symptomNameCuredByDrugCompound(symptomName: SymptomName): mutable.Set[DrugCompound] = {
@@ -67,9 +77,10 @@ class Meddra {
   }
 
   def symptomCuiCuredByDrugCompound(symptomCui: SymptomCui): mutable.Set[DrugCompound] = {
-    val resultSet1 = genericQuery("cui", symptomCui, "stitch_compound_id", "meddra_all_indications", DrugCompound.apply)
+    // val resultSet1 = genericQuery("cui", symptomCui, "stitch_compound_id", "meddra_all_indications", DrugCompound.apply)
     val resultSet2 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id", "meddra_all_indications", DrugCompound.apply)
-    resultSet1 union resultSet2
+    // resultSet1 union resultSet2
+    resultSet2
   }
 
   def symptomNameIsSideEffectDrugCompound(symptomName: SymptomName): mutable.Set[DrugCompound] = {
@@ -81,14 +92,15 @@ class Meddra {
   }
 
   def symptomCuiIsSideEffectDrugCompound(symptomCui: SymptomCui): mutable.Set[DrugCompound] = {
-    val resultSet1 = genericQuery("cui", symptomCui, "stitch_compound_id1", "meddra_all_se", DrugCompound.apply)
-    val resultSet2 = genericQuery("cui", symptomCui, "stitch_compound_id2", "meddra_all_se", DrugCompound.apply)
-    val resultSet3 = genericQuery("cui", symptomCui, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
-    val resultSet4 = genericQuery("cui", symptomCui, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
+    // val resultSet1 = genericQuery("cui", symptomCui, "stitch_compound_id1", "meddra_all_se", DrugCompound.apply)
+    // val resultSet2 = genericQuery("cui", symptomCui, "stitch_compound_id2", "meddra_all_se", DrugCompound.apply)
+    // val resultSet3 = genericQuery("cui", symptomCui, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
+    // val resultSet4 = genericQuery("cui", symptomCui, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
     val resultSet5 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id1", "meddra_all_se", DrugCompound.apply)
     val resultSet6 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id2", "meddra_all_se", DrugCompound.apply)
-    val resultSet7 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
-    val resultSet8 = genericQuery("cui_of_meddra_term", symptomCui, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
-    resultSet1 union resultSet2 union resultSet3 union resultSet4 union resultSet5 union resultSet6 union resultSet7 union resultSet8
+    val resultSet7 = genericQuery("meddra_concept_id", symptomCui, "stitch_compound_id1", "meddra_freq", DrugCompound.apply)
+    val resultSet8 = genericQuery("meddra_concept_id", symptomCui, "stitch_compound_id2", "meddra_freq", DrugCompound.apply)
+    // resultSet1 union resultSet2 union resultSet3 union resultSet4 union resultSet5 union resultSet6 union resultSet7 union resultSet8
+    resultSet5 union resultSet6 union resultSet7 union resultSet8
   }
 }

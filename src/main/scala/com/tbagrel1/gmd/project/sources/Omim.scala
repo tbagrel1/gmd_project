@@ -71,22 +71,26 @@ class Omim {
       }
       if (rawTi != null && rawCs != null && rawNo != null) {
         val omim = Utils.normalize(rawNo)
-        val ti = rawTi.splitAt(rawTi.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize)
+        val ti = rawTi.splitAt(rawTi.strip.indexOf(' '))._2.replace('\n', ' ').split(';').filterNot(_.isEmpty).map(Utils.normalize)
         val cs = Utils.normalize(rawCs)
         for (name <- ti) {
           val eqRecord = OmimEqSymptomNameSymptomOmimRecord(eqId, name, omim)
-          if (verbose) {
-            println(eqRecord)
+          if (!name.isEmpty && !omim.isEmpty) {
+            if (verbose) {
+              println(eqRecord)
+            }
+            eqSymptomNameSymptomOmimRecords.insert(eqRecord).index()
+            eqId += 1
           }
-          eqSymptomNameSymptomOmimRecords.insert(eqRecord).index()
-          eqId += 1
         }
-        val causeRecord = OmimCauseSymptomOmimRecord(causeId, omim, cs)
-        if (verbose) {
-          println(causeRecord)
+        if (!omim.isEmpty && !cs.isEmpty) {
+          val causeRecord = OmimCauseSymptomOmimRecord(causeId, omim, cs)
+          if (verbose) {
+            println(causeRecord)
+          }
+          causeSymptomOmimRecords.insert(causeRecord).index()
+          causeId += 1
         }
-        causeSymptomOmimRecords.insert(causeRecord).index()
-        causeId += 1
       }
     }
   }

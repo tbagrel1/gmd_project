@@ -100,22 +100,26 @@ class HpOntology {
       val name = Utils.normalize(entity("name").head)
       for (rawHp <- entity.getOrElse("id", mutable.ArrayBuffer.empty) ++ entity.getOrElse("alt_id", mutable.ArrayBuffer.empty)) {
         val hp = Utils.normalize(Utils.stripPrefix(rawHp, "HP:"))
-        val eqRecord = HpOntologyEqSymptomNameSymptomHpRecord(eqId, name, hp)
-        if (verbose) {
-          println(eqRecord)
+        if (!name.isEmpty && !hp.isEmpty) {
+          val eqRecord = HpOntologyEqSymptomNameSymptomHpRecord(eqId, name, hp)
+          if (verbose) {
+            println(eqRecord)
+          }
+          eqSymptomNameSymptomHpRecords.insert(eqRecord).index()
+          eqId += 1
         }
-        eqSymptomNameSymptomHpRecords.insert(eqRecord).index()
-        eqId += 1
       }
       for (rawSynonym <- entity.getOrElse("synonym", mutable.ArrayBuffer.empty)) {
         val end = rawSynonym.slice(1, rawSynonym.length).indexOf('"') + 1
         val synonym = Utils.normalize(rawSynonym.slice(1, end))
-        val synonymRecord = HpOntologySynonymSymptomNameSymptomNameRecord(synonymId, name, synonym)
-        if (verbose) {
-          println(synonymRecord)
+        if (!name.isEmpty && !synonym.isEmpty) {
+          val synonymRecord = HpOntologySynonymSymptomNameSymptomNameRecord(synonymId, name, synonym)
+          if (verbose) {
+            println(synonymRecord)
+          }
+          synonymSymptomNameSymptomNameRecords.insert(synonymRecord).index()
+          synonymId += 1
         }
-        synonymSymptomNameSymptomNameRecords.insert(synonymRecord).index()
-        synonymId += 1
       }
     }
   }

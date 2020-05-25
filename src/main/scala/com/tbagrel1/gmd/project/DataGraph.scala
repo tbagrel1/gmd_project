@@ -1,12 +1,16 @@
 package com.tbagrel1.gmd.project
 
-import SymptomActivationOrigin.HigherLevel
 import com.tbagrel1.gmd.project.sources.SourceCatalog
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSymptoms: mutable.HashMap[String, (String, Double)]) {
+class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.HashMap[String, (String, Double)]) {
+  // TODO: problème omim.txt sur le name
+  // TODO: name vide
+
+  val initialActivationAvg: Double = initialSymptoms.map(_._2._2).sum / initialSymptoms.size
+  val cutOff: Double = initialActivationAvg * Parameters.CUT_OFF_THRESHOLD
 
   val symptomNameNodes: mutable.HashMap[String, SymptomActivation] = symptomNodesFromInitial("name")
   val symptomHpNodes: mutable.HashMap[String, SymptomActivation] = symptomNodesFromInitial("hp")
@@ -20,11 +24,25 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   val drugAttributesQueue: mutable.Queue[DrugAttribute] = mutable.Queue.empty
   val symptomAttributesQueue: mutable.Queue[SymptomAttribute] = mutable.Queue.empty
 
+  def symptomDiameter: Int = {
+    symptomNameNodes.size + symptomHpNodes.size + symptomCuiNodes.size + symptomOmimNodes.size
+  }
+
+  def drugDiameter: Int = {
+    drugNameNodes.size + drugAtcNodes.size + drugCompoundNodes.size
+  }
+
+  def reportDiameter(): Unit = {
+    val sD = symptomDiameter
+    val dD = drugDiameter
+    println(s"    % Diameter of symptom space: ${sD} | Diameter of drug space: ${dD} | Total diameter: ${sD + dD}")
+  }
+
   def symptomNodesFromInitial(requestedAttributeType: String): mutable.HashMap[String, SymptomActivation] = {
     for ((value, (attributeType, weight)) <- initialSymptoms if attributeType == requestedAttributeType)
       yield { (value, SymptomActivation(
-        for (i <- ArrayBuffer(0 until causeLevels)) yield { if (i == 0) { weight } else { 0.0 } },
-        for (i <- ArrayBuffer(0 until causeLevels)) yield { if (i == 0) { SymptomActivationOrigin.UserInput } else { SymptomActivationOrigin.NoOrigin } }
+        for (i <- ArrayBuffer.from(0 until Parameters.CAUSE_LEVELS)) yield { if (i == 0) { weight } else { 0.0 } },
+        for (i <- ArrayBuffer.from(0 until Parameters.CAUSE_LEVELS)) yield { if (i == 0) { SymptomActivationOrigin.UserInput } else { SymptomActivationOrigin.NoOrigin } }
       )) }
   }
 
@@ -71,19 +89,22 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   }
 
   def sendLight(): Unit = {
-    // Step 1:Compute synonyms of the input symptoms
+    println("# Step 1: Compute synonyms of the input symptoms")
     dispatchSymptomEqSynonymAt(symptomAttributesFromMaps)
-    // Step 2: Look for causes and dispatch synonyms
-    for (nextLevel <- 1 until causeLevels) {
+    println(symptomNameNodes.keys) // TODO: remove
+    println("# Step 2: Look for causes and dispatch synonyms")
+    for (nextLevel <- 1 until Parameters.CAUSE_LEVELS) {
+      println(nextLevel) // TODO: remove
       dispatchSymptomEqSynonymAt(dispatchCausedByAt(nextLevel, symptomAttributesFromMaps))
     }
-    // Step 3: Look for side effect sources
+    println("# Step 3: Look for side effect sources")
     val symptoms = symptomAttributesFromMaps
     dispatchIsSideEffectAt(symptoms)
-    // Step 4: Look for cures
+    println("# Step 4: Look for cures")
     dispatchCuredByAt(symptoms)
-    // Step 5: Look for synonyms of the activated drugs
+    println("# Step 5: Look for synonyms of the activated drugs")
     dispatchDrugEqSynonymAt(drugAttributesFromMaps)
+    println("# Done!")
   }
 
   def cures: Seq[(String, Double, CureActivationOrigin)] = {
@@ -97,7 +118,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   }
 
   def causes: Seq[(String, Double, SymptomActivationOrigin)] = {
-    val theCauses = (for (i <- 1 until causeLevels) yield {
+    val theCauses = (for (i <- 1 until Parameters.CAUSE_LEVELS) yield {
       (for ((name, act) <- symptomNameNodes if act.levelActivation(i) > 0) yield {
         (name, act.levelActivation(i), act.levelOrigin(i))
       }).toSeq
@@ -106,6 +127,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   }
 
   def dispatchCausedByAt(nextLevel: Int, attributes: Seq[SymptomAttribute]): Seq[SymptomAttribute] = {
+    reportDiameter()
     val higherLevelAttributes: mutable.HashSet[SymptomAttribute] = mutable.HashSet.empty
     for (attribute <- attributes) {
       val (causes, activation) = attribute match {
@@ -138,12 +160,15 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
           getSymptomAttributeActivation(causeAttribute) match {
             case None => {
               val map = getSymptomAttributeMap(causeAttribute)
-              map.put(
-                causeAttribute.value, SymptomActivation(
-                  for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { activation.levelActivation.slice(0, nextLevel).max * Parameters.HIGHER_SYMPTOM_TRANSMISSION_COEFF } else { 0.0 } },
-                  for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { SymptomActivationOrigin.HigherLevel(ArrayBuffer((attribute, source))) } else { SymptomActivationOrigin.NoOrigin } }
-                  )
+              val theAct = SymptomActivation(
+                for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { activation.levelActivation.slice(0, nextLevel).max * Parameters.HIGHER_SYMPTOM_TRANSMISSION_COEFF } else { 0.0 } },
+                for ((act, i) <- activation.levelActivation.zipWithIndex) yield { if (i == nextLevel) { SymptomActivationOrigin.HigherLevel(ArrayBuffer((attribute, source))) } else { SymptomActivationOrigin.NoOrigin } }
                 )
+              map.put(
+                causeAttribute.value, theAct
+                )
+              println(causeAttribute) // TODO: remove
+              println(theAct) // TODO: remove
             }
             case Some(causeActivation) => {
               causeActivation.levelOrigin(nextLevel) match {
@@ -157,6 +182,8 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
                 }
                 case _ => throw new Exception("Higher level symptom has an activation origin different from NoOrigin or HigherLevel")
               }
+              println(causeAttribute) // TODO: remove
+              println(causeActivation) // TODO: remove
             }
           }
         }
@@ -167,6 +194,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
 
   def dispatchIsSideEffectAt(attributes: Seq[SymptomAttribute]): Unit = {
     for (attribute <- attributes) {
+      reportDiameter()
       val (causes, activation) = attribute match {
         case name@SymptomName(_) => (
           List((sources.drugbank.symptomNameIsSideEffectDrugName(name), "Drugbank"),
@@ -195,9 +223,11 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
           getDrugAttributeActivation(causeAttribute) match {
             case None => {
               val map = getDrugAttributeMap(causeAttribute)
+              val theAct = DrugActivation(0.0, CureActivationOrigin.NoOrigin, activation.levelActivation.max, SideEffectActivationOrigin.ResponsibleFor(ArrayBuffer((attribute, source))))
               map.put(
-                causeAttribute.value, DrugActivation(0.0, CureActivationOrigin.NoOrigin, activation.levelActivation.max, SideEffectActivationOrigin.ResponsibleFor(ArrayBuffer((attribute, source))))
-                )
+                causeAttribute.value, theAct)
+              println(causeAttribute) // TODO: remove
+              println(theAct) // TODO: remove
             }
             case Some(causeActivation) => {
 
@@ -212,6 +242,8 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
                 }
                 case _ => throw new Exception("Side effect drug has a side effect activation origin different from NoOrigin or ResponsibleFor")
               }
+              println(causeAttribute) // TODO: remove
+              println(causeActivation) // TODO: remove
             }
           }
         }
@@ -221,6 +253,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
 
   def dispatchCuredByAt(attributes: Seq[SymptomAttribute]): Unit = {
     for (attribute <- attributes) {
+      reportDiameter()
       val (cures, activation) = attribute match {
         case name@SymptomName(_) => (
           List((sources.drugbank.symptomNameCuredByDrugName(name), "Drugbank"),
@@ -249,9 +282,12 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
           getDrugAttributeActivation(cureAttribute) match {
             case None => {
               val map = getDrugAttributeMap(cureAttribute)
+              val theAct = DrugActivation(activation.levelActivation.max, CureActivationOrigin.Cures(ArrayBuffer((attribute, source))), 0.0, SideEffectActivationOrigin.NoOrigin)
               map.put(
-                cureAttribute.value, DrugActivation(activation.levelActivation.max, CureActivationOrigin.Cures(ArrayBuffer((attribute, source))), 0.0, SideEffectActivationOrigin.NoOrigin)
+                cureAttribute.value, theAct
                 )
+              println(cureAttribute) // TODO: Remove
+              println(theAct)  // TODO: Remove
             }
             case Some(cureActivation) => {
               cureActivation.cureOrigin match {
@@ -265,6 +301,8 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
                 }
                 case _ => throw new Exception("Cure drug has a cure activation origin different from NoOrigin or Cures")
               }
+              println(cureAttribute) // TODO: Remove
+              println(cureActivation)  // TODO: Remove
             }
           }
         }
@@ -289,6 +327,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   }
 
   def dispatchDrugEqSynonymAtOneStep(attribute: DrugAttribute): Unit = {
+    reportDiameter()
     val (eqs, synonyms, activation) = attribute match {
       case name@DrugName(_) => (
         List((sources.drugbank.drugNameEqDrugAtc(name), "Drugbank"),
@@ -321,31 +360,38 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
           getDrugAttributeActivation(eqSynonymAttribute) match {
             case None => {
               val map = getDrugAttributeMap(eqSynonymAttribute)
-              map.put(
-                eqSynonymAttribute.value, DrugActivation(
-                  activation.cureActivation * transmissionCoeff,
-                  cureOriginApp(attribute, source),
-                  activation.sideEffectActivation * transmissionCoeff,
-                  sideEffectOriginApp(attribute, source)
+              val theAct = DrugActivation(
+                activation.cureActivation * transmissionCoeff,
+                cureOriginApp(attribute, source),
+                activation.sideEffectActivation * transmissionCoeff,
+                sideEffectOriginApp(attribute, source)
                 )
+              map.put(
+                eqSynonymAttribute.value, theAct
               )
-              drugAttributesQueue.enqueue(eqSynonymAttribute)
-            }
-            case Some(eqActivation) => {
-              var updated = false
-              if (activation.cureActivation * transmissionCoeff > eqActivation.cureActivation) {
-                updated = true
-                eqActivation.cureActivation = activation.cureActivation * transmissionCoeff
-                eqActivation.cureOrigin = cureOriginApp(attribute, source)
-              }
-              if (activation.sideEffectActivation * transmissionCoeff > eqActivation.sideEffectActivation) {
-                updated = true
-                eqActivation.sideEffectActivation = activation.sideEffectActivation * transmissionCoeff
-                eqActivation.sideEffectOrigin = sideEffectOriginApp(attribute, source)
-              }
-              if (updated) {
+              if (activation.sideEffectActivation * transmissionCoeff > cutOff || activation.sideEffectActivation * transmissionCoeff > cutOff) {
                 drugAttributesQueue.enqueue(eqSynonymAttribute)
               }
+              println(eqSynonymAttribute) // TODO: remove
+              println(theAct)  // TODO: remove
+            }
+            case Some(eqSynonymActivation) => {
+              var updated = false
+              if (activation.cureActivation * transmissionCoeff > eqSynonymActivation.cureActivation) {
+                updated = true
+                eqSynonymActivation.cureActivation = activation.cureActivation * transmissionCoeff
+                eqSynonymActivation.cureOrigin = cureOriginApp(attribute, source)
+              }
+              if (activation.sideEffectActivation * transmissionCoeff > eqSynonymActivation.sideEffectActivation) {
+                updated = true
+                eqSynonymActivation.sideEffectActivation = activation.sideEffectActivation * transmissionCoeff
+                eqSynonymActivation.sideEffectOrigin = sideEffectOriginApp(attribute, source)
+              }
+              if (updated && (activation.cureActivation * transmissionCoeff > cutOff || activation.sideEffectActivation > cutOff)) {
+                drugAttributesQueue.enqueue(eqSynonymAttribute)
+              }
+              println(eqSynonymAttribute) // TODO: remove
+              println(eqSynonymActivation)  // TODO: remove
             }
           }
         }
@@ -354,6 +400,7 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
   }
 
   def dispatchSymptomEqSynonymAtOneStep(attribute: SymptomAttribute): Unit = {
+    reportDiameter()
     val (eqs, synonyms, activation) = attribute match {
       case name@SymptomName(_) => (
         List((sources.meddra.symptomNameEqSymptomCui(name).asInstanceOf[mutable.Set[SymptomAttribute]], "Meddra"),
@@ -406,26 +453,34 @@ class DataGraph(val sources: SourceCatalog, val causeLevels: Int, val initialSym
           getSymptomAttributeActivation(eqSynonymAttribute) match {
             case None => {
               val map = getSymptomAttributeMap(eqSynonymAttribute)
-              map.put(
-                eqSynonymAttribute.value, SymptomActivation(
-                  for (act <- activation.levelActivation) yield { act * transmissionCoeff },
-                  for (_ <- activation.levelActivation) yield { originApp(attribute, source) }
-                  )
+              val theAct = SymptomActivation(
+                for (act <- activation.levelActivation) yield { act * transmissionCoeff },
+                for (_ <- activation.levelActivation) yield { originApp(attribute, source) }
                 )
-              symptomAttributesQueue.enqueue(eqSynonymAttribute)
-            }
-            case Some(eqActivation) => {
-              var updated = false
-              for (i <- activation.levelActivation.indices) {
-                if (activation.levelActivation(i) * transmissionCoeff > eqActivation.levelActivation(i)) {
-                  updated = true
-                  eqActivation.levelActivation(i) = activation.levelActivation(i) * transmissionCoeff
-                  eqActivation.levelOrigin(i) = originApp(attribute, source)
-                }
-              }
-              if (updated) {
+              map.put(
+                eqSynonymAttribute.value,
+                theAct
+                )
+              if (theAct.levelActivation.max > cutOff) {
                 symptomAttributesQueue.enqueue(eqSynonymAttribute)
               }
+              println(eqSynonymAttribute) // TODO: remove
+              println(theAct)  // TODO: remove
+            }
+            case Some(eqSynonymActivation) => {
+              var updated = false
+              for (i <- activation.levelActivation.indices) {
+                if (activation.levelActivation(i) * transmissionCoeff > eqSynonymActivation.levelActivation(i)) {
+                  updated = true
+                  eqSynonymActivation.levelActivation(i) = activation.levelActivation(i) * transmissionCoeff
+                  eqSynonymActivation.levelOrigin(i) = originApp(attribute, source)
+                }
+              }
+              if (updated && eqSynonymActivation.levelActivation.max > cutOff) {
+                symptomAttributesQueue.enqueue(eqSynonymAttribute)
+              }
+              println(eqSynonymAttribute) // TODO: remove
+              println(eqSynonymActivation)  // TODO: remove
             }
           }
         }
