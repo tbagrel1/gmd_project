@@ -59,6 +59,30 @@ class HpAnnotations {
     resultSet
   }
 
+  def getSymtpomHp: mutable.Set[String] = {
+    val query = s"SELECT DISTINCT sign_id FROM phenotype_annotation"
+    val statement = connection.prepareStatement(query)
+    val results = statement.executeQuery()
+    val resultSet = mutable.HashSet.empty[String]
+    while (results.next()) {
+      val resultString = results.getString("sign_id")
+      resultSet.addOne (Utils.normalize (resultString) )
+    }
+    resultSet
+  }
+
+  def getSymptomOmim: mutable.Set[String] = {
+    val query = s"SELECT DISTINCT sign_id FROM phenotype_annotation WHERE disease_db_and_id LIKE 'OMIM:%'"
+    val statement = connection.prepareStatement(query)
+    val results = statement.executeQuery()
+    val resultSet = mutable.HashSet.empty[String]
+    while (results.next()) {
+      val resultString = results.getString("disease_db_and_id")
+      resultSet.addOne (Utils.normalize (resultString) )
+    }
+    resultSet
+  }
+
   def genericQuery[A <: Attribute, B <: Attribute](inputColumnName: String, inputColumnValue: A, outputColumnName: String, tableName: String, wrapper: String => B, exact: Boolean): mutable.Set[B] = {
     val query = if (exact) {
       s"SELECT DISTINCT ${outputColumnName} FROM ${tableName} WHERE UPPER(${inputColumnName}) = ?"

@@ -70,6 +70,22 @@ class ChemicalSources {
     commit()
   }
 
+  def getDrugAtc: mutable.Set[String] = {
+    mutable.Set.from(
+      eqDrugAtcDrugCompoundRecords.query()
+        .search()
+        .entries
+        .map(atcCompoundRecord => atcCompoundRecord.drugAtc))
+  }
+
+  def getDrugCompound: mutable.Set[String] = {
+    mutable.Set.from(
+      eqDrugAtcDrugCompoundRecords.query()
+        .search()
+        .entries
+        .map(atcCompoundRecord => atcCompoundRecord.drugCompound))
+  }
+
   def drugAtcEqDrugCompound(drugAtc: DrugAtc): mutable.Set[DrugCompound] = {
     mutable.Set.from(
       eqDrugAtcDrugCompoundRecords.query()

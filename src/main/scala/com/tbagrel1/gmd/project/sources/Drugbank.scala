@@ -125,6 +125,39 @@ class Drugbank {
     commit()
   }
 
+  def getDrugNames: mutable.Set[String] = {
+    mutable.Set.from(
+      eqDrugNameDrugAtcRecords.query()
+        .search()
+        .entries
+        .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugName)
+    ) union mutable.Set.from(
+      synonymDrugNameDrugNameRecords.query()
+        .search()
+        .entries
+        .map(synonymDrugNameDrugNameRecord => synonymDrugNameDrugNameRecord.drugName2)
+    ) union mutable.Set.from(
+      synonymDrugNameDrugNameRecords.query()
+        .search()
+        .entries
+        .map(synonymDrugNameDrugNameRecord => synonymDrugNameDrugNameRecord.drugName1)
+    ) union mutable.Set.from(
+      cureSideEffectDrugNameRecords.query()
+        .search()
+        .entries
+        .map(cureSideEffectDrugNameRecord => cureSideEffectDrugNameRecord.drugName)
+    )
+  }
+
+  def getDrugAtc: mutable.Set[String] = {
+    mutable.Set.from(
+      eqDrugNameDrugAtcRecords.query()
+        .search()
+        .entries
+        .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugAtc)
+    )
+  }
+
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
     mutable.Set.from(
       eqDrugNameDrugAtcRecords.query()

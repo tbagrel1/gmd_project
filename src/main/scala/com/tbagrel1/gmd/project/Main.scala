@@ -1,35 +1,39 @@
 package com.tbagrel1.gmd.project
 
+import akka.actor.ActorSystem
+import akka.stream.{ActorMaterializer, OverflowStrategy}
+import akka.stream.scaladsl.Source
+import com.tbagrel1.gmd.project.WebServer.ProcessProgress
 import com.tbagrel1.gmd.project.sources.SourceCatalog
 
 import scala.collection.mutable
 
 object Main {
   def main(args: Array[String]): Unit = {
+    implicit val system = ActorSystem("MediNodeActorSystem")
+    implicit val materializer = ActorMaterializer()
+    implicit val executionContext = system.dispatcher
+
+    val (progressActor, progressSource) = Source
+      .actorRef[ProcessProgress](32, OverflowStrategy.dropNew)
+      .preMaterialize()
+    progressSource.runForeach(println)
+
     val sources = new SourceCatalog
     if (args.nonEmpty) {
       sources.createIndex(true)
     }
-    println("\n\n\n")
-    println(sources.getAllSymptomNames)
-    println(sources.getAllSymptomNames.size)
-    println("\n\n\n")
-/*
+    sources.getAllDrugAtc // Test Tim
     val graph = new DataGraph(sources, mutable.Set(
-      ("Abdominal pain", "name", 1.0),
-      ("Headache", "name", 1.0)
-    ))
+      ("Penis di.+der", "nameRegex", 1.0),
+    ), progressActor)
     graph.sendLight()
     println("Disease causes\n--------------------------------------")
-    val causes = graph.causes
-    println(causes.slice(0, 10 min causes.length))
+    println(graph.causes(Parameters.TEXT_RESULT_LIMIT))
     println("\n\nSide-effects causes\n--------------------------------------")
-    val sideEffectSources = graph.sideEffectSources
-    println(sideEffectSources.slice(0, 10 min sideEffectSources.length))
+    println(graph.sideEffectSources(Parameters.TEXT_RESULT_LIMIT))
     println("\n\nCures\n--------------------------------------")
-    val cures = graph.cures
-    println(cures.slice(0, 10 min cures.length))
-    graph.createDotFile(3)
- */
+    println(graph.cures(Parameters.TEXT_RESULT_LIMIT))
+    graph.createDotFile(1)
   }
 }

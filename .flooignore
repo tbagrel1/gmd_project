@@ -5,3 +5,9 @@ project/target
 data_sources
 indexes
 graph_output
+**/.idea
+**/.vscode
+**/.directory
+**/*.env
+frontend/node_modules
+frontend/src/index.html

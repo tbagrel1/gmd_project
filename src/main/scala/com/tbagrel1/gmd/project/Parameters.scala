@@ -6,6 +6,8 @@ object Parameters {
   val EQUAL_TRANSMISSION_COEFF: Double = 0.9
   val SYNONYM_TRANSMISSION_COEFF: Double = 0.75
   val HIGHER_SYMPTOM_TRANSMISSION_COEFF: Double = 0.8
+  val TEXT_RESULT_LIMIT: Int = 10
+  val GRAPH_RESULT_LIMIT: Int = 1
   val NAME_FIELD_TYPE: FieldType = FieldType.Untokenized  // exact matching for names
   val EXACT_SQL: Boolean = NAME_FIELD_TYPE == FieldType.Untokenized
   val CAUSE_LEVELS: Int = 2

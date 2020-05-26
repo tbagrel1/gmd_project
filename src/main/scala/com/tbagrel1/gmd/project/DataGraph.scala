@@ -2,15 +2,18 @@ package com.tbagrel1.gmd.project
 
 import java.io.{File, PrintWriter}
 
+import akka.actor.ActorRef
+import com.tbagrel1.gmd.project.WebServer.ProcessProgress
 import com.tbagrel1.gmd.project.sources.SourceCatalog
 import scalax.collection.edge.LkDiEdge
 import scalax.collection.io.dot._
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
+import scala.reflect.ClassTag
 import scala.util.matching.Regex
 
-class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(String, String, Double)]) {
+class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(String, String, Double)], val progressActor: ActorRef) {
 
   val initialAttributesActivations: mutable.Set[(SymptomAttribute, SymptomActivation)] = {
     (for ((value, attributeType, weight) <- initialSymptoms) yield {
@@ -42,30 +45,60 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
   val drugAttributesQueue: mutable.Queue[DrugAttribute] = mutable.Queue.empty
   val symptomAttributesQueue: mutable.Queue[SymptomAttribute] = mutable.Queue.empty
 
-  def symptomDiameter: Int = {
-    symptomNameNodes.size + symptomHpNodes.size + symptomCuiNodes.size + symptomOmimNodes.size
+  var progressReportStepName: String = ""
+  var progressReportStepNo: Int = 0
+  val progressReportTotalStepNb: Int = 4 + 2 * (Parameters.CAUSE_LEVELS - 1)
+  var progressReportCurrentlyProcessed: String = ""
+  var progressReportExtendedSymptomNames: Option[Seq[String]] = None
+
+  def nextStep(stepName: String): Unit = {
+    progressReportStepName = stepName
+    progressReportStepNo += 1
+    reportProgress()
   }
 
-  def drugDiameter: Int = {
-    drugNameNodes.size + drugAtcNodes.size + drugCompoundNodes.size
+  def currentlyProcessing(thing: Attribute): Unit = {
+    progressReportCurrentlyProcessed = thing.toString
+    reportProgress()
   }
 
-  def reportDiameter(): Unit = {
-    val sD = symptomDiameter
-    val dD = drugDiameter
-    println(s"    % Diameter of symptom space: ${sD} | Diameter of drug space: ${dD} | Total diameter: ${sD + dD}")
+  def extendedSymptomNames(symptomNames: Seq[String]): Unit = {
+    progressReportExtendedSymptomNames = Some(symptomNames)
+    reportProgress()
   }
 
-  def getSymptomNamesMatching(pattern: Regex): mutable.Set[String] = {
+  def reportProgress(): Unit = {
+    progressActor ! ProcessProgress(
+      progressReportStepName,
+      progressReportStepNo,
+      progressReportTotalStepNb,
+      Map(
+        "name" -> symptomNameNodes.size,
+        "hp" -> symptomHpNodes.size,
+        "omim" -> symptomHpNodes.size,
+        "cui" -> symptomOmimNodes.size
+      ),
+      Map(
+        "name" -> drugNameNodes.size,
+        "atc" -> drugAtcNodes.size,
+        "compound" -> drugCompoundNodes.size
+      ),
+      symptomAttributesQueue.size,
+      drugAttributesQueue.size,
+      progressReportCurrentlyProcessed,
+      progressReportExtendedSymptomNames
+    )
+  }
+
+  def getSymptomNamesMatching(pattern: Regex): mutable.Set[String] = { // TODO: check
     val resultSet = mutable.HashSet.empty[String]
     val scalaPattern = s"(?i)${pattern}".r
     val allSymptomNames = sources.getAllSymptomNames
-    for (symptomName <- allSymptomNames)
-      scalaPattern.findAllMatchIn(symptomName)
-    resultSet  // TODO: implement
+    allSymptomNames.foreach(symptomName => resultSet.addOne((scalaPattern findFirstIn symptomName).toString))
+    resultSet
   }
 
-  def symptomNodes[S <: SymptomAttribute]: mutable.HashMap[String, SymptomActivation] = {
+  def symptomNodes[S: ClassTag]: mutable.HashMap[String, SymptomActivation] = {
     mutable.HashMap.from(initialAttributesActivations
       .filter { case (attribute, _) => attribute.isInstanceOf[S] }
       .map { case (attribute, activation) => (attribute.value, activation) }
@@ -115,22 +148,22 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
   }
 
   def sendLight(): Unit = {
-    println("# Step 1: Compute synonyms of the input symptoms")
+    nextStep("Computing synonyms of the input symptoms")
     dispatchSymptomEqSynonymAt(symptomAttributesFromMaps)
-    println(symptomNameNodes.keys) // TODO: remove
-    println("# Step 2: Look for causes and dispatch synonyms")
+    extendedSymptomNames(symptomNameNodes.keys.toSeq)
     for (nextLevel <- 1 until Parameters.CAUSE_LEVELS) {
-      println(nextLevel) // TODO: remove
-      dispatchSymptomEqSynonymAt(dispatchCausedByAt(nextLevel, symptomAttributesFromMaps))
+      nextStep(s"Looking for causes of level ${nextLevel}")
+      val activated = dispatchCausedByAt(nextLevel, symptomAttributesFromMaps)
+      nextStep(s"Dispatching synonyms for causes of level ${nextLevel}")
+      dispatchSymptomEqSynonymAt(activated)
     }
-    println("# Step 3: Look for side effect sources")
+    nextStep("Looking for side effect sources")
     val symptoms = symptomAttributesFromMaps
     dispatchIsSideEffectAt(symptoms)
-    println("# Step 4: Look for cures")
+    nextStep("Looking for cures")
     dispatchCuredByAt(symptoms)
-    println("# Step 5: Look for synonyms of the activated drugs")
+    nextStep("Looking for synonyms of the activated drugs")
     dispatchDrugEqSynonymAt(drugAttributesFromMaps)
-    println("# Done!")
   }
 
   def createDotFile(limit: Int): Unit = {
@@ -143,17 +176,13 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
 
     val attributeQueue = mutable.Queue.empty[(Attribute, Reason)]
 
-    val theCures = cures
-    val theSideEffectSources = sideEffectSources
-    val theCauses = causes
-
     for ((attribute, _) <- initialAttributesActivations) {
       g += LkDiEdge(SymptomName("User input"), attribute)("initial_symptom/user")
     }
 
-    attributeQueue.enqueueAll(theCures.slice(0, limit min theCures.length).map(t => (DrugName(t._1), Cure)))
-    attributeQueue.enqueueAll(theSideEffectSources.slice(0, limit min theSideEffectSources.length).map(t => (DrugName(t._1), SideEffectCause)))
-    attributeQueue.enqueueAll(theCauses.slice(0, limit min theCauses.length).map(t => (SymptomName(t._1), Cause(t._3))))
+    attributeQueue.enqueueAll(cures(limit).map(t => (DrugName(t._1), Cure)))
+    attributeQueue.enqueueAll(sideEffectSources(limit).map(t => (DrugName(t._1), SideEffectCause)))
+    attributeQueue.enqueueAll(causes(limit).map(t => (SymptomName(t._1), Cause(t._3))))
 
     def processNode(attributeReason: (Attribute, Reason)): Unit = {
       val (attribute, reason) = attributeReason
@@ -298,27 +327,29 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
     writer.close()
   }
 
-  def cures: Seq[(String, Double, CureActivationOrigin)] = {
-    val theCures = for ((name, act) <- drugNameNodes if act.cureActivation > 0) yield { (name, act.cureActivation, act.cureOrigin) }
-    theCures.toSeq.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
+  def cures(limit: Int): Seq[(String, Double, CureActivationOrigin)] = {
+    val theCures1 = for ((name, act) <- drugNameNodes if act.cureActivation > 0) yield { (name, act.cureActivation, act.cureOrigin) }
+    val theCures2 = theCures1.toSeq.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
+    theCures2.slice(0, limit min theCures2.size)
   }
 
-  def sideEffectSources: Seq[(String, Double, SideEffectActivationOrigin)] = {
-    val theSideEffectSources = for ((name, act) <- drugNameNodes if act.sideEffectActivation > 0) yield { (name, act.sideEffectActivation, act.sideEffectOrigin) }
-    theSideEffectSources.toSeq.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
+  def sideEffectSources(limit: Int): Seq[(String, Double, SideEffectActivationOrigin)] = {
+    val theSideEffectSources1 = for ((name, act) <- drugNameNodes if act.sideEffectActivation > 0) yield { (name, act.sideEffectActivation, act.sideEffectOrigin) }
+    val theSideEffectSources2 = theSideEffectSources1.toSeq.sortWith { case ((_, act1, _), (_, act2, _)) => act1 > act2 }
+    theSideEffectSources2.slice(0, limit min theSideEffectSources2.size)
   }
 
-  def causes: Seq[(String, Double, Int, SymptomActivationOrigin)] = {
-    val theCauses = (for (i <- 1 until Parameters.CAUSE_LEVELS) yield {
+  def causes(limit: Int): Seq[(String, Double, Int, SymptomActivationOrigin)] = {
+    val theCauses1 = (for (i <- 1 until Parameters.CAUSE_LEVELS) yield {
       (for ((name, act) <- symptomNameNodes if act.levelActivation(i) > 0) yield {
         (name, act.levelActivation(i), i, act.levelOrigin(i))
       }).toSeq
     }).flatten
-    theCauses.sortWith { case ((_, act1, _, _), (_, act2, _, _)) => act1 > act2 }
+    val theCauses2 = theCauses1.sortWith { case ((_, act1, _, _), (_, act2, _, _)) => act1 > act2 }
+    theCauses2.slice(0, limit min theCauses2.size).toList
   }
 
   def dispatchCausedByAt(nextLevel: Int, attributes: Seq[SymptomAttribute]): Seq[SymptomAttribute] = {
-    reportDiameter()
     val higherLevelAttributes: mutable.HashSet[SymptomAttribute] = mutable.HashSet.empty
     for (attribute <- attributes) {
       val (causes, activation) = attribute match {
@@ -358,8 +389,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               map.put(
                 causeAttribute.value, theAct
                 )
-              println(causeAttribute) // TODO: remove
-              println(theAct) // TODO: remove
+              currentlyProcessing(causeAttribute)
             }
             case Some(causeActivation) => {
               causeActivation.levelOrigin(nextLevel) match {
@@ -373,8 +403,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
                 }
                 case _ => throw new Exception("Higher level symptom has an activation origin different from NoOrigin or HigherLevel")
               }
-              println(causeAttribute) // TODO: remove
-              println(causeActivation) // TODO: remove
+              currentlyProcessing(causeAttribute)
             }
           }
         }
@@ -385,7 +414,6 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
 
   def dispatchIsSideEffectAt(attributes: Seq[SymptomAttribute]): Unit = {
     for (attribute <- attributes) {
-      reportDiameter()
       val (causes, activation) = attribute match {
         case name@SymptomName(_) => (
           List((sources.drugbank.symptomNameIsSideEffectDrugName(name), "Drugbank"),
@@ -417,8 +445,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               val theAct = DrugActivation(0.0, CureActivationOrigin.NoOrigin, activation.levelActivation.max, SideEffectActivationOrigin.ResponsibleFor(ArrayBuffer((attribute, source))))
               map.put(
                 causeAttribute.value, theAct)
-              println(causeAttribute) // TODO: remove
-              println(theAct) // TODO: remove
+              currentlyProcessing(causeAttribute)
             }
             case Some(causeActivation) => {
 
@@ -433,8 +460,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
                 }
                 case _ => throw new Exception("Side effect drug has a side effect activation origin different from NoOrigin or ResponsibleFor")
               }
-              println(causeAttribute) // TODO: remove
-              println(causeActivation) // TODO: remove
+              currentlyProcessing(causeAttribute)
             }
           }
         }
@@ -444,7 +470,6 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
 
   def dispatchCuredByAt(attributes: Seq[SymptomAttribute]): Unit = {
     for (attribute <- attributes) {
-      reportDiameter()
       val (cures, activation) = attribute match {
         case name@SymptomName(_) => (
           List((sources.drugbank.symptomNameCuredByDrugName(name), "Drugbank"),
@@ -477,8 +502,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               map.put(
                 cureAttribute.value, theAct
                 )
-              println(cureAttribute) // TODO: Remove
-              println(theAct)  // TODO: Remove
+              currentlyProcessing(cureAttribute)
             }
             case Some(cureActivation) => {
               cureActivation.cureOrigin match {
@@ -492,8 +516,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
                 }
                 case _ => throw new Exception("Cure drug has a cure activation origin different from NoOrigin or Cures")
               }
-              println(cureAttribute) // TODO: Remove
-              println(cureActivation)  // TODO: Remove
+              currentlyProcessing(cureAttribute)
             }
           }
         }
@@ -518,7 +541,6 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
   }
 
   def dispatchDrugEqSynonymAtOneStep(attribute: DrugAttribute): Unit = {
-    reportDiameter()
     val (eqs, synonyms, activation) = attribute match {
       case name@DrugName(_) => (
         List((sources.drugbank.drugNameEqDrugAtc(name), "Drugbank"),
@@ -563,8 +585,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               if (activation.sideEffectActivation * transmissionCoeff > cutOff || activation.sideEffectActivation * transmissionCoeff > cutOff) {
                 drugAttributesQueue.enqueue(eqSynonymAttribute)
               }
-              println(eqSynonymAttribute) // TODO: remove
-              println(theAct)  // TODO: remove
+              currentlyProcessing(eqSynonymAttribute)
             }
             case Some(eqSynonymActivation) => {
               var updated = false
@@ -581,8 +602,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               if (updated && (activation.cureActivation * transmissionCoeff > cutOff || activation.sideEffectActivation > cutOff)) {
                 drugAttributesQueue.enqueue(eqSynonymAttribute)
               }
-              println(eqSynonymAttribute) // TODO: remove
-              println(eqSynonymActivation)  // TODO: remove
+              currentlyProcessing(eqSynonymAttribute)
             }
           }
         }
@@ -591,7 +611,6 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
   }
 
   def dispatchSymptomEqSynonymAtOneStep(attribute: SymptomAttribute): Unit = {
-    reportDiameter()
     val (eqs, synonyms, activation) = attribute match {
       case name@SymptomName(_) => (
         List((sources.meddra.symptomNameEqSymptomCui(name).asInstanceOf[mutable.Set[SymptomAttribute]], "Meddra"),
@@ -655,8 +674,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               if (theAct.levelActivation.max > cutOff) {
                 symptomAttributesQueue.enqueue(eqSynonymAttribute)
               }
-              println(eqSynonymAttribute) // TODO: remove
-              println(theAct)  // TODO: remove
+              currentlyProcessing(eqSynonymAttribute)
             }
             case Some(eqSynonymActivation) => {
               var updated = false
@@ -670,8 +688,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
               if (updated && eqSynonymActivation.levelActivation.max > cutOff) {
                 symptomAttributesQueue.enqueue(eqSynonymAttribute)
               }
-              println(eqSynonymAttribute) // TODO: remove
-              println(eqSynonymActivation)  // TODO: remove
+              currentlyProcessing(eqSynonymAttribute)
             }
           }
         }

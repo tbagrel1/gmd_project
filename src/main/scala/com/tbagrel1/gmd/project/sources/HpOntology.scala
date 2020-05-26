@@ -146,6 +146,14 @@ class HpOntology {
     )
   }
 
+  def getSymtpomHp: mutable.Set[String] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomHpRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomHpRecord => eqSymptomNameSymptomHpRecord.symptomHp)
+    )  }
+
   def symptomNameEqSymptomHp(symptomName: SymptomName): mutable.Set[SymptomHp] = {
     mutable.Set.from(
       eqSymptomNameSymptomHpRecords.query()

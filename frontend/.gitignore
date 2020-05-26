@@ -1,0 +1,7 @@
+**/.idea
+**/.vscode
+**/.directory
+**/*.env
+node_modules
+src/index.html
+

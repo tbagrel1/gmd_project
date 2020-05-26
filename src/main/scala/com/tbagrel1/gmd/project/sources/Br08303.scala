@@ -15,7 +15,7 @@ import scala.io.Source
 case class Br08303EqDrugNameDrugAtcRecord(id: Int, drugName: String, drugAtc: String)
 
 object Br08303Lucene extends DirectLucene(appendIfExists = true, uniqueFields = List("eqDrugNameDrugAtcRecordId"), directory = Option(Paths.get("indexes/br08303"))) {
-  val eqDrugNameDrugAtcRecord: SearchableBr08303EqDrugNameDrugAtcRecord = create.searchable[SearchableBr08303EqDrugNameDrugAtcRecord]
+  val eqDrugNameDrugAtcRecords: SearchableBr08303EqDrugNameDrugAtcRecord = create.searchable[SearchableBr08303EqDrugNameDrugAtcRecord]
 }
 
 trait SearchableBr08303EqDrugNameDrugAtcRecord extends Searchable[Br08303EqDrugNameDrugAtcRecord] {
@@ -65,7 +65,7 @@ class Br08303 {
           if (verbose) {
             println(record)
           }
-          eqDrugNameDrugAtcRecord.insert(record).index()
+          eqDrugNameDrugAtcRecords.insert(record).index()
           id += 1
         }
       }
@@ -74,21 +74,36 @@ class Br08303 {
     commit()
   }
 
-  def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
+  def getDrugNames: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecord.query()
-        .filter(exact(eqDrugNameDrugAtcRecord.drugName(drugName.value)))
+      eqDrugNameDrugAtcRecords.query()
         .search()
         .entries
-        .map(nameAtcRecord => DrugAtc(nameAtcRecord.drugAtc)))
+        .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugName))
+  }
+
+  def getDrugAtc: mutable.Set[String] = {
+    mutable.Set.from(
+      eqDrugNameDrugAtcRecords.query()
+        .search()
+        .entries
+        .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugAtc))
+  }
+  def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
+    mutable.Set.from(
+      eqDrugNameDrugAtcRecords.query()
+        .filter(exact(eqDrugNameDrugAtcRecords.drugName(drugName.value)))
+        .search()
+        .entries
+        .map(eqDrugNameDrugAtcRecord => DrugAtc(eqDrugNameDrugAtcRecord.drugAtc)))
   }
   def drugAtcEqDrugName(drugAtc: DrugAtc): mutable.Set[DrugName] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecord.query()
-        .filter(exact(eqDrugNameDrugAtcRecord.drugAtc(drugAtc.value)))
+      eqDrugNameDrugAtcRecords.query()
+        .filter(exact(eqDrugNameDrugAtcRecords.drugAtc(drugAtc.value)))
         .search()
         .entries
-        .map(nameAtcRecord => DrugName(nameAtcRecord.drugName))
+        .map(eqDrugNameDrugAtcRecord => DrugName(eqDrugNameDrugAtcRecord.drugName))
       )
   }
 }

@@ -28,25 +28,41 @@ class Meddra {
 
   val connection: Connection = DriverManager.getConnection(databaseURL + database, username, password)
 
-  def getSymptomNames: mutable.Set[String] = {
-    def genericGet(columnName: String, tableName: String): mutable.Set[String] = {
-      val query = s"SELECT DISTINCT ${columnName} FROM ${tableName}"
-      val statement = connection.prepareStatement(query)
+  def genericGet(columnName: String, tableName: String): mutable.Set[String] = {
+    val query = s"SELECT DISTINCT ${columnName} FROM ${tableName}"
+    val statement = connection.prepareStatement(query)
 
-      val results = statement.executeQuery()
-      val resultSet = mutable.HashSet.empty[String]
-      while (results.next()) {
-        val resultString = results.getString(columnName)
-        resultSet.addOne(Utils.normalize(resultString))
-      }
-      resultSet
+    val results = statement.executeQuery()
+    val resultSet = mutable.HashSet.empty[String]
+    while (results.next()) {
+      val resultString = results.getString(columnName)
+      resultSet.addOne(Utils.normalize(resultString))
     }
+    resultSet
+  }
+
+  def getSymptomNames: mutable.Set[String] = {
     genericGet("concept_name", "meddra_all_indications") union
     genericGet("label", "meddra") union
     genericGet("side_effect_name", "meddra_freq") union
     genericGet("side_effect_name", "meddra_all_se")
   }
 
+  def getSymptomCui: mutable.Set[String] = {
+
+    genericGet("cui_of_meddra_term", "meddra_all_indications") union
+    genericGet("cui", "meddra") union
+    genericGet("meddra_concept_id", "meddra_freq") union
+    genericGet("cui_of_meddra_term", "meddra_all_se")
+  }
+
+  def getDrugCompound: mutable.Set[String] = {
+    genericGet("stitch_compound_id", "meddra_all_indications") union
+    genericGet("stitch_compound_id1", "meddra_freq") union
+    genericGet("stitch_compound_id2", "meddra_freq") union
+    genericGet("stitch_compound_id1", "meddra_all_se") union
+    genericGet("stitch_compound_id2", "meddra_all_se")
+  }
   def genericQuery[A <: Attribute, B <: Attribute](inputColumnName: String, inputColumnValue: A, outputColumnName: String, tableName: String, wrapper: String => B): mutable.Set[B] = {
     val query = s"SELECT DISTINCT ${outputColumnName} FROM ${tableName} WHERE UPPER(${inputColumnName}) = ?"
     val statement = connection.prepareStatement(query)

@@ -111,15 +111,6 @@ class OmimOntology {
     commit()
   }
 
-  def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
-    mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
-        .filter(exact(eqSymptomNameSymptomOmimRecords.symptomName(symptomName.value)))
-        .search()
-        .entries
-        .map(eqSymptomNameSymptomOmimRecord => SymptomOmim(eqSymptomNameSymptomOmimRecord.symptomOmim)))
-  }
-
   def getSymptomNames: mutable.Set[String] = {
     mutable.Set.from(
       eqSymptomNameSymptomOmimRecords.query()
@@ -132,16 +123,42 @@ class OmimOntology {
         .entries
         .map(eqSymptomNameSymptomCuiRecord => eqSymptomNameSymptomCuiRecord.symptomName)
     ) union mutable.Set.from(
-        synonymSymptomNameSymptomNameRecords.query()
-          .search()
-          .entries
-          .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName2)
+      synonymSymptomNameSymptomNameRecords.query()
+        .search()
+        .entries
+        .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName2)
     ) union  mutable.Set.from(
       synonymSymptomNameSymptomNameRecords.query()
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName1)
     )
+  }
+
+
+  def getSymptomCui: mutable.Set[String] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomCuiRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomCuiRecord => eqSymptomNameSymptomCuiRecord.symptomCui))
+  }
+
+  def getSymptomOmim: mutable.Set[String] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomOmimRecords.query()
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomOmim))
+  }
+
+  def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
+    mutable.Set.from(
+      eqSymptomNameSymptomOmimRecords.query()
+        .filter(exact(eqSymptomNameSymptomOmimRecords.symptomName(symptomName.value)))
+        .search()
+        .entries
+        .map(eqSymptomNameSymptomOmimRecord => SymptomOmim(eqSymptomNameSymptomOmimRecord.symptomOmim)))
   }
 
   def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = {
