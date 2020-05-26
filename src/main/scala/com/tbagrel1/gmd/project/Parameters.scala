@@ -12,4 +12,5 @@ object Parameters {
   val EXACT_SQL: Boolean = NAME_FIELD_TYPE == FieldType.Untokenized
   val CAUSE_LEVELS: Int = 2
   val CUT_OFF_THRESHOLD: Double = 0.7
+  val NO_LIMIT: Int = 1000000000
 }

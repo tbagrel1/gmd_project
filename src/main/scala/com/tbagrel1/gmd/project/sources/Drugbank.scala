@@ -127,22 +127,22 @@ class Drugbank {
 
   def getDrugNames: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugName)
     ) union mutable.Set.from(
-      synonymDrugNameDrugNameRecords.query()
+      synonymDrugNameDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(synonymDrugNameDrugNameRecord => synonymDrugNameDrugNameRecord.drugName2)
     ) union mutable.Set.from(
-      synonymDrugNameDrugNameRecords.query()
+      synonymDrugNameDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(synonymDrugNameDrugNameRecord => synonymDrugNameDrugNameRecord.drugName1)
     ) union mutable.Set.from(
-      cureSideEffectDrugNameRecords.query()
+      cureSideEffectDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(cureSideEffectDrugNameRecord => cureSideEffectDrugNameRecord.drugName)
@@ -151,7 +151,7 @@ class Drugbank {
 
   def getDrugAtc: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugAtc)
@@ -160,7 +160,7 @@ class Drugbank {
 
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqDrugNameDrugAtcRecords.drugName(drugName.value)))
         .search()
         .entries
@@ -168,7 +168,7 @@ class Drugbank {
   }
   def drugAtcEqDrugName(drugAtc: DrugAtc): mutable.Set[DrugName] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqDrugNameDrugAtcRecords.drugAtc(drugAtc.value)))
         .search()
         .entries
@@ -176,13 +176,13 @@ class Drugbank {
   }
   def drugNameSynonymDrugName(drugName: DrugName): mutable.Set[DrugName] = {
     mutable.Set.from(
-      synonymDrugNameDrugNameRecords.query()
+      synonymDrugNameDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(synonymDrugNameDrugNameRecords.drugName1(drugName.value)))
         .search()
         .entries
         .map(synonymDrugNameDrugNameRecord => DrugName(synonymDrugNameDrugNameRecord.drugName2))
     ) union mutable.Set.from(
-      synonymDrugNameDrugNameRecords.query()
+      synonymDrugNameDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(synonymDrugNameDrugNameRecords.drugName2(drugName.value)))
         .search()
         .entries
@@ -191,7 +191,7 @@ class Drugbank {
   }
   def symptomNameCuredByDrugName(symptomName: SymptomName): mutable.Set[DrugName] = {
     mutable.Set.from(
-      cureSideEffectDrugNameRecords.query()
+      cureSideEffectDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(cureSideEffectDrugNameRecords.cures(symptomName.value)))
         .search()
         .entries
@@ -200,7 +200,7 @@ class Drugbank {
   }
   def symptomNameIsSideEffectDrugName(symptomName: SymptomName): mutable.Set[DrugName] = {
     mutable.Set.from(
-      cureSideEffectDrugNameRecords.query()
+      cureSideEffectDrugNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(cureSideEffectDrugNameRecords.sideEffects(symptomName.value)))
         .search()
         .entries

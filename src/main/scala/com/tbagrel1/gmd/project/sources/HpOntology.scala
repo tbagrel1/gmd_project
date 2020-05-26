@@ -127,19 +127,19 @@ class HpOntology {
 
   def getSymptomNames: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomHpRecords.query()
+      eqSymptomNameSymptomHpRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomHpRecord => eqSymptomNameSymptomHpRecord.symptomName)
     ) union
     mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName1)
     ) union
     mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName2)
@@ -148,7 +148,7 @@ class HpOntology {
 
   def getSymtpomHp: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomHpRecords.query()
+      eqSymptomNameSymptomHpRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomHpRecord => eqSymptomNameSymptomHpRecord.symptomHp)
@@ -156,7 +156,7 @@ class HpOntology {
 
   def symptomNameEqSymptomHp(symptomName: SymptomName): mutable.Set[SymptomHp] = {
     mutable.Set.from(
-      eqSymptomNameSymptomHpRecords.query()
+      eqSymptomNameSymptomHpRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomHpRecords.symptomName(symptomName.value)))
         .search()
         .entries
@@ -166,7 +166,7 @@ class HpOntology {
 
   def symptomHpEqSymptomName(symptomHp: SymptomHp): mutable.Set[SymptomName] = {
     mutable.Set.from(
-      eqSymptomNameSymptomHpRecords.query()
+      eqSymptomNameSymptomHpRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomHpRecords.symptomHp(symptomHp.value)))
         .search()
         .entries
@@ -176,13 +176,13 @@ class HpOntology {
 
   def symptomNameSynonymSymptomName(symptomName: SymptomName): mutable.Set[SymptomName] = {
     mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(synonymSymptomNameSymptomNameRecords.symptomName1(symptomName.value)))
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => SymptomName(synonymSymptomNameSymptomNameRecord.symptomName2))
       ) union mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(synonymSymptomNameSymptomNameRecords.symptomName2(symptomName.value)))
         .search()
         .entries

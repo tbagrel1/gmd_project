@@ -23,7 +23,7 @@ object Main {
     if (args.nonEmpty) {
       sources.createIndex(true)
     }
-    sources.getAllDrugAtc // Test Tim
+    sources.printStats // Test Tim
     val graph = new DataGraph(sources, mutable.Set(
       ("Penis di.+der", "nameRegex", 1.0),
     ), progressActor)

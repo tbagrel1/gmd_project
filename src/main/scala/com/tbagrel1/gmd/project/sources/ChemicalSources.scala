@@ -8,7 +8,7 @@ import com.outr.lucene4s.{DirectLucene, exact}
 import com.outr.lucene4s.field.{Field, FieldType}
 import com.outr.lucene4s.mapper.Searchable
 import com.outr.lucene4s.query.SearchTerm
-import com.tbagrel1.gmd.project.{DrugAtc, DrugCompound, Utils}
+import com.tbagrel1.gmd.project.{DrugAtc, DrugCompound, Parameters, Utils}
 
 import scala.collection.mutable
 
@@ -72,7 +72,7 @@ class ChemicalSources {
 
   def getDrugAtc: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugAtcDrugCompoundRecords.query()
+      eqDrugAtcDrugCompoundRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(atcCompoundRecord => atcCompoundRecord.drugAtc))
@@ -80,7 +80,7 @@ class ChemicalSources {
 
   def getDrugCompound: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugAtcDrugCompoundRecords.query()
+      eqDrugAtcDrugCompoundRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(atcCompoundRecord => atcCompoundRecord.drugCompound))
@@ -88,7 +88,7 @@ class ChemicalSources {
 
   def drugAtcEqDrugCompound(drugAtc: DrugAtc): mutable.Set[DrugCompound] = {
     mutable.Set.from(
-      eqDrugAtcDrugCompoundRecords.query()
+      eqDrugAtcDrugCompoundRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqDrugAtcDrugCompoundRecords.drugAtc(drugAtc.value)))
         .search()
         .entries
@@ -96,7 +96,7 @@ class ChemicalSources {
   }
   def drugCompoundEqDrugAtc(drugCompound: DrugCompound): mutable.Set[DrugAtc] = {
     mutable.Set.from(
-      eqDrugAtcDrugCompoundRecords.query()
+      eqDrugAtcDrugCompoundRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqDrugAtcDrugCompoundRecords.drugCompound(drugCompound.value)))
         .search()
         .entries

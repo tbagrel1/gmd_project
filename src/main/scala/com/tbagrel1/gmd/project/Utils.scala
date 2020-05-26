@@ -18,6 +18,13 @@ object Utils {
       .replaceAll(" +", " ")
   }
 
+  def hpNormalize(input: String): String = {
+    input
+      .strip
+      .toUpperCase
+      .filter("0123456789" contains _)
+  }
+
   def enrichFlatMap[A](set: mutable.Set[A], f: A => IterableOnce[A]): mutable.Set[A] = {
     set union set.flatMap(f)
   }

@@ -76,7 +76,7 @@ class Br08303 {
 
   def getDrugNames: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugName))
@@ -84,14 +84,14 @@ class Br08303 {
 
   def getDrugAtc: mutable.Set[String] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqDrugNameDrugAtcRecord => eqDrugNameDrugAtcRecord.drugAtc))
   }
   def drugNameEqDrugAtc(drugName: DrugName): mutable.Set[DrugAtc] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqDrugNameDrugAtcRecords.drugName(drugName.value)))
         .search()
         .entries
@@ -99,7 +99,7 @@ class Br08303 {
   }
   def drugAtcEqDrugName(drugAtc: DrugAtc): mutable.Set[DrugName] = {
     mutable.Set.from(
-      eqDrugNameDrugAtcRecords.query()
+      eqDrugNameDrugAtcRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqDrugNameDrugAtcRecords.drugAtc(drugAtc.value)))
         .search()
         .entries

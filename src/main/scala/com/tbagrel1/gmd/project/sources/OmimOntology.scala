@@ -113,22 +113,22 @@ class OmimOntology {
 
   def getSymptomNames: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomName)
     ) union mutable.Set.from(
-      eqSymptomNameSymptomCuiRecords.query()
+      eqSymptomNameSymptomCuiRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomCuiRecord => eqSymptomNameSymptomCuiRecord.symptomName)
     ) union mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName2)
     ) union  mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => synonymSymptomNameSymptomNameRecord.symptomName1)
@@ -138,7 +138,7 @@ class OmimOntology {
 
   def getSymptomCui: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomCuiRecords.query()
+      eqSymptomNameSymptomCuiRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomCuiRecord => eqSymptomNameSymptomCuiRecord.symptomCui))
@@ -146,7 +146,7 @@ class OmimOntology {
 
   def getSymptomOmim: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomOmim))
@@ -154,7 +154,7 @@ class OmimOntology {
 
   def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomOmimRecords.symptomName(symptomName.value)))
         .search()
         .entries
@@ -163,7 +163,7 @@ class OmimOntology {
 
   def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomOmimRecords.symptomOmim(symptomOmim.value)))
         .search()
         .entries
@@ -172,7 +172,7 @@ class OmimOntology {
 
   def symptomNameEqSymptomCui(symptomName: SymptomName): mutable.Set[SymptomCui] = {
     mutable.Set.from(
-      eqSymptomNameSymptomCuiRecords.query()
+      eqSymptomNameSymptomCuiRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomCuiRecords.symptomName(symptomName.value)))
         .search()
         .entries
@@ -181,7 +181,7 @@ class OmimOntology {
 
   def symptomCuiEqSymptomName(symptomCui: SymptomCui): mutable.Set[SymptomName] = {
     mutable.Set.from(
-      eqSymptomNameSymptomCuiRecords.query()
+      eqSymptomNameSymptomCuiRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomCuiRecords.symptomCui(symptomCui.value)))
         .search()
         .entries
@@ -190,13 +190,13 @@ class OmimOntology {
 
   def symptomNameSynonymSymptomName(symptomName: SymptomName): mutable.Set[SymptomName] = {
     mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(synonymSymptomNameSymptomNameRecords.symptomName1(symptomName.value)))
         .search()
         .entries
         .map(synonymSymptomNameSymptomNameRecord => SymptomName(synonymSymptomNameSymptomNameRecord.symptomName2))
     ) union  mutable.Set.from(
-      synonymSymptomNameSymptomNameRecords.query()
+      synonymSymptomNameSymptomNameRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(synonymSymptomNameSymptomNameRecords.symptomName2(symptomName.value)))
         .search()
         .entries

@@ -66,7 +66,7 @@ class HpAnnotations {
     val resultSet = mutable.HashSet.empty[String]
     while (results.next()) {
       val resultString = results.getString("sign_id")
-      resultSet.addOne (Utils.normalize (resultString) )
+      resultSet.addOne (Utils.hpNormalize(resultString))
     }
     resultSet
   }
@@ -78,7 +78,8 @@ class HpAnnotations {
     val resultSet = mutable.HashSet.empty[String]
     while (results.next()) {
       val resultString = results.getString("disease_db_and_id")
-      resultSet.addOne (Utils.normalize (resultString) )
+      println(resultString)
+      resultSet.addOne(Utils.normalize(resultString))
     }
     resultSet
   }

@@ -99,13 +99,13 @@ class Omim {
 
   def getSymptomNames: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomName)
     ) union
     mutable.Set.from(
-      causeSymptomOmimRecords.query()
+      causeSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(causeSymptomOmimRecord => causeSymptomOmimRecord.symptoms)
@@ -114,12 +114,12 @@ class Omim {
   }
   def getSymptomOmim: mutable.Set[String] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomOmim)
     ) union mutable.Set.from(
-      causeSymptomOmimRecords.query()
+      causeSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .search()
         .entries
         .map(causeSymptomOmimRecord => causeSymptomOmimRecord.symptomOmim)
@@ -128,7 +128,7 @@ class Omim {
 
   def symptomNameEqSymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomOmimRecords.symptomName(symptomName.value)))
         .search()
         .entries
@@ -138,7 +138,7 @@ class Omim {
 
   def symptomOmimEqSymptomName(symptomOmim: SymptomOmim): mutable.Set[SymptomName] = {
     mutable.Set.from(
-      eqSymptomNameSymptomOmimRecords.query()
+      eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(eqSymptomNameSymptomOmimRecords.symptomOmim(symptomOmim.value)))
         .search()
         .entries
@@ -148,7 +148,7 @@ class Omim {
 
   def symptomNameCausedBySymptomOmim(symptomName: SymptomName): mutable.Set[SymptomOmim] = {
     mutable.Set.from(
-      causeSymptomOmimRecords.query()
+      causeSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
         .filter(exact(causeSymptomOmimRecords.symptoms(symptomName.value)))
         .search()
         .entries
