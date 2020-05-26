@@ -77,8 +77,7 @@ class HpAnnotations {
     val results = statement.executeQuery()
     val resultSet = mutable.HashSet.empty[String]
     while (results.next()) {
-      val resultString = results.getString("disease_db_and_id")
-      println(resultString)
+      val resultString = results.getString("sign_id")
       resultSet.addOne(Utils.normalize(resultString))
     }
     resultSet

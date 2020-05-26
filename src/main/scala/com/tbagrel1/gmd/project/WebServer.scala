@@ -10,6 +10,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.{ActorMaterializer, OverflowStrategy}
 import akka.http.scaladsl.model.HttpMethods._
 import akka.stream.scaladsl._
+import scala.concurrent._
 import com.tbagrel1.gmd.project.sources.SourceCatalog
 
 import scala.collection.mutable
@@ -79,7 +80,13 @@ object WebServer {
         try {
           val ast = text.parseJson
           val symptoms = ast.convertTo[Seq[Symptom]]
-          resultActor ! processSymptoms(symptoms)
+          println(text)
+
+          Future {
+            processSymptoms(symptoms)
+          } onComplete {
+            tryResult => tryResult.map(result => resultActor ! result)
+          }
         } catch {
           case e: Exception => {
             try {
@@ -102,22 +109,17 @@ object WebServer {
     resultSource.map(result => try { val res = TextMessage(result.toJson.compactPrint); println(res); res } catch { case e: Exception => e.printStackTrace(); TextMessage("Erreur") }) merge
     Source.fromIterator(() => Iterator.continually(TextMessage(KeepAlive("ping").toJson.compactPrint))).throttle(1, FiniteDuration(1, "second"))
 
-  val requestHandler: HttpRequest => HttpResponse = {
-    case req @ HttpRequest(GET, Uri.Path("/websocket"), _, _, _) =>
-      req.header[UpgradeToWebSocket] match {
-        case Some(upgrade) => upgrade.handleMessagesWithSinkSource(handleRequests, sendResponses)
-        case None => HttpResponse(400, entity = "Not a valid websocket request!")
-      }
-    case r: HttpRequest =>
-      r.discardEntityBytes() // important to drain incoming HTTP Entity stream
-      HttpResponse(404, entity = "Unknown resource!")
+  val route: Route = get {
+    path ("websocket") {
+      handleWebSocketMessages(Flow.fromSinkAndSource(handleRequests, sendResponses))
+    }
   }
 
   def main(args: Array[String]): Unit = {
     if (args.nonEmpty) {
       sources.createIndex(true)
     }
-    val bindingFuture = Http().bindAndHandleSync(requestHandler, "localhost", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
     println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
     bindingFuture

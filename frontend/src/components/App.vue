@@ -69,7 +69,19 @@
           b-container.mt-4(v-else fluid)
             b-row
               b-col
-                div not implemented yet
+                h2 Cures
+                div {{ result.cures }}
+            b-row
+              b-col
+                h2 Side-effect sources
+                div {{ result.sideEffectSources }}
+            b-row
+              b-col
+                h2 Causes
+                div {{ result.causes }}
+            b-row
+              b-col
+                div(v-html="result.graphRepr")
 </template>
 
 <script>
