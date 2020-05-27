@@ -23,9 +23,8 @@ object Main {
     if (args.nonEmpty) {
       sources.createIndex(true)
     }
-    sources.printStats // Test Tim
     val graph = new DataGraph(sources, mutable.Set(
-      ("Penis di.+der", "nameRegex", 1.0),
+      ("Convulsion", "name", 1.0),
     ), progressActor)
     graph.sendLight()
     println("Disease causes\n--------------------------------------")

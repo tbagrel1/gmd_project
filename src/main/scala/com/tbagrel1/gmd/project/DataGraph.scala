@@ -150,6 +150,7 @@ class DataGraph(val sources: SourceCatalog, val initialSymptoms: mutable.Set[(St
   def sendLight(): Unit = {
     nextStep("Computing synonyms of the input symptoms")
     dispatchSymptomEqSynonymAt(symptomAttributesFromMaps)
+    println(symptomNameNodes) // TODO: remove
     extendedSymptomNames(symptomNameNodes.keys.toSeq)
     for (nextLevel <- 1 until Parameters.CAUSE_LEVELS) {
       nextStep(s"Looking for causes of level ${nextLevel}")

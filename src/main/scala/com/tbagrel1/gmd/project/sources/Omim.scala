@@ -103,15 +103,9 @@ class Omim {
         .search()
         .entries
         .map(eqSymptomNameSymptomOmimRecord => eqSymptomNameSymptomOmimRecord.symptomName)
-    ) union
-    mutable.Set.from(
-      causeSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)
-        .search()
-        .entries
-        .map(causeSymptomOmimRecord => causeSymptomOmimRecord.symptoms)
     )
-
   }
+
   def getSymptomOmim: mutable.Set[String] = {
     mutable.Set.from(
       eqSymptomNameSymptomOmimRecords.query().limit(Parameters.NO_LIMIT)

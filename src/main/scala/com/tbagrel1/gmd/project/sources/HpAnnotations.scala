@@ -66,19 +66,19 @@ class HpAnnotations {
     val resultSet = mutable.HashSet.empty[String]
     while (results.next()) {
       val resultString = results.getString("sign_id")
-      resultSet.addOne (Utils.hpNormalize(resultString))
+      resultSet.addOne (Utils.codeNormalize(resultString))
     }
     resultSet
   }
 
   def getSymptomOmim: mutable.Set[String] = {
-    val query = s"SELECT DISTINCT sign_id FROM phenotype_annotation WHERE disease_db_and_id LIKE 'OMIM:%'"
+    val query = s"SELECT DISTINCT disease_db_and_id FROM phenotype_annotation WHERE disease_db_and_id LIKE 'OMIM:%'"
     val statement = connection.prepareStatement(query)
     val results = statement.executeQuery()
     val resultSet = mutable.HashSet.empty[String]
     while (results.next()) {
-      val resultString = results.getString("sign_id")
-      resultSet.addOne(Utils.normalize(resultString))
+      val resultString = results.getString("disease_db_and_id")
+      resultSet.addOne(Utils.codeNormalize(resultString))
     }
     resultSet
   }

@@ -1,5 +1,7 @@
 package com.tbagrel1.gmd.project.sources
 
+import com.tbagrel1.gmd.project.{SymptomName, SymptomOmim}
+
 import scala.collection.mutable
 
 class SourceCatalog() {
@@ -30,6 +32,16 @@ class SourceCatalog() {
     hpOntology.getSymptomNames union
     omim.getSymptomNames
   }
+
+  def getToLongAllSymptomNames: Unit = {
+    for (s <- omim.getSymptomNames) {
+      if (s.size > 120)
+        if (omim.symptomNameEqSymptomOmim(SymptomName(s)) == mutable.Set.empty[SymptomOmim])
+          println(s)
+    }
+
+  }
+
   def printStats: Unit = {
     println("------------- SYMPTOM STATS --------------\n")
     println("------------ SYMPTOM HP STATS ------------\n")
@@ -39,7 +51,7 @@ class SourceCatalog() {
     getSymptomCuiStats // intersect très bof
     println("------------------------------------------\n")
     println("------------- SYMPTOM OMIM STATS -------------\n")
-    getSymptomOmimStats // intersect pourris
+    getSymptomOmimStats // ok
     println("------------------------------------------\n")
 
     println("--------------- DRUG STATS ---------------\n")
@@ -54,7 +66,7 @@ class SourceCatalog() {
     println("------------------------------------------\n")
   }
 
-  def getSymtpomHpStats: Unit = { // TODO: check
+  def getSymtpomHpStats: Unit = {
     val symptomHpHpOntology = hpOntology.getSymtpomHp
     val symptomHpHpAnnotations = hpAnnotations.getSymtpomHp
     val allSymtpomHp = symptomHpHpOntology union symptomHpHpAnnotations
@@ -62,13 +74,13 @@ class SourceCatalog() {
     val symptomHpHpAnnotationsSize = symptomHpHpAnnotations.size.toFloat
     val allSymtpomHpSize = allSymtpomHp.size.toFloat
     val symptomHpHpOntologyRate = symptomHpHpOntologySize / allSymtpomHpSize
-    val dsymptomHpHpAnnotationsRate = symptomHpHpAnnotationsSize / allSymtpomHpSize
-    val drugCompoundAtcDrugbank = (symptomHpHpOntology intersect symptomHpHpAnnotations).size.toFloat / allSymtpomHpSize
+    val symptomHpHpAnnotationsRate = symptomHpHpAnnotationsSize / allSymtpomHpSize
+    val symptomHpHpAnnotationsHpOntologyRate = (symptomHpHpOntology intersect symptomHpHpAnnotations).size.toFloat / allSymtpomHpSize
     println(s"Nb symptomHp total : ${allSymtpomHpSize}\nNb symptomHp HpOntology : ${symptomHpHpOntologySize}\nNb symptomHp HpAnnotations ${symptomHpHpAnnotationsSize}\n" +
-      s"Taux symptomHp HpOntology : ${symptomHpHpOntologyRate}\nTaux symptomHp HpAnnotations : ${dsymptomHpHpAnnotationsRate}\nTaux symptomHp HpOntology/HpAnnotations : ${drugCompoundAtcDrugbank}")
+      s"Taux symptomHp HpOntology : ${symptomHpHpOntologyRate}\nTaux symptomHp HpAnnotations : ${symptomHpHpAnnotationsRate}\nTaux symptomHp HpOntology/HpAnnotations : ${symptomHpHpAnnotationsHpOntologyRate}")
   }
 
-  def getSymptomCuiStats: Unit = { // TODO: check
+  def getSymptomCuiStats: Unit = {
     val symptomCuiOmimOntology = omimOntology.getSymptomCui
     val symptomCuiMeddra = meddra.getSymptomCui
     val allSymptomCui = symptomCuiOmimOntology union symptomCuiMeddra
@@ -77,12 +89,14 @@ class SourceCatalog() {
     val allSymptomCuiSize = allSymptomCui.size.toFloat
     val symptomCuiOmimOntologyRate = symptomCuiOmimOntologySize / allSymptomCuiSize
     val symptomCuiMeddraRate = symptomCuiMeddraSize / allSymptomCuiSize
-    val symptomCuiOmimOntologyMeddra = (symptomCuiOmimOntology intersect symptomCuiMeddra).size.toFloat / allSymptomCuiSize
+    val i = symptomCuiOmimOntology intersect symptomCuiMeddra
+    println(i)
+    val symptomCuiOmimOntologyMeddra = (i).size.toFloat / allSymptomCuiSize
     println(s"Nb symptomCui total : ${allSymptomCuiSize}\nNb symptomCui Omim Ontology : ${symptomCuiOmimOntologySize}\nNb symptomCui Meddra: ${symptomCuiMeddraSize}\n" +
             s"Taux symptomCui Omim Ontology : ${symptomCuiOmimOntologyRate}\nTaux symptomCui Meddra: ${symptomCuiMeddraRate}\nTaux symptomCui Omim Ontology/ Meddra: ${symptomCuiOmimOntologyMeddra}\n")
   }
 
-  def getSymptomOmimStats: Unit = { // TODO: check
+  def getSymptomOmimStats: Unit = {
     val symptomOmimOmim = omim.getSymptomOmim
     val symptomOmimOmimOntology = omimOntology.getSymptomOmim
     val symptomOmimHpAnnotations = hpAnnotations.getSymptomOmim
@@ -97,14 +111,14 @@ class SourceCatalog() {
     val symptomOmimHpAnnotationsRate = symptomOmimHpAnnotationsSize / allSymptomOmimSize
 
     val symptomOmimOmimOntologyOmimRate = (symptomOmimOmim intersect symptomOmimOmimOntology).size.toFloat / (symptomOmimOmim union symptomOmimOmimOntology).size.toFloat
-    val symptomOmimOmimOntologyHpAnnotationRate = (symptomOmimOmimOntology intersect symptomOmimHpAnnotations).size.toFloat / (symptomOmimOmim union symptomOmimOmimOntology).size.toFloat
-    val symptomOmimOmimHpAnnotationRate = (symptomOmimOmim intersect symptomOmimHpAnnotations).size.toFloat / (symptomOmimOmim union symptomOmimOmimOntology).size.toFloat
+    val symptomOmimOmimOntologyHpAnnotationRate = (symptomOmimOmimOntology intersect symptomOmimHpAnnotations).size.toFloat / (symptomOmimHpAnnotations union symptomOmimOmimOntology).size.toFloat
+    val symptomOmimOmimHpAnnotationRate = (symptomOmimOmim intersect symptomOmimHpAnnotations).size.toFloat / (symptomOmimOmim union symptomOmimHpAnnotations).size.toFloat
     println(s"Nb symptomOmim total : ${allSymptomOmimSize}\nNb symptomOmim Omim : ${symptomOmimOmimSize}\nNb symptomOmim Omim ontology : ${symptomOmimOmimOntologySize}\nNb symptomOmim Hp annotations : ${symptomOmimHpAnnotationsSize}\n" +
       s"\nTaux symptomOmim Omim : ${symptomOmimOmimRate}\nTaux symptomOmim Omim ontology : ${symptomOmimOmimOntologyRate}\nTaux symptomOmim Hp annotations : ${symptomOmimHpAnnotationsRate}\n" +
       s"\nTaux symptomOmim Omim/Omim ontology : ${symptomOmimOmimOntologyOmimRate}\nTaux symptomOmim Omim ontology/Hp annotations : ${symptomOmimOmimOntologyHpAnnotationRate}\nTaux symptomOmim Omim/Hp annotations : ${symptomOmimOmimHpAnnotationRate}\n")
   }
 
-  def getDrugNamesStats: Unit = { // TODO: check
+  def getDrugNamesStats: Unit = {
     val drugNameAtc = br08303.getDrugNames
     val drugNameDrugbank = drugbank.getDrugNames
     val allDrugName = drugNameAtc union drugNameDrugbank

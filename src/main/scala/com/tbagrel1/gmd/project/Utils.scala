@@ -18,7 +18,7 @@ object Utils {
       .replaceAll(" +", " ")
   }
 
-  def hpNormalize(input: String): String = {
+  def codeNormalize(input: String): String = {
     input
       .strip
       .toUpperCase
